@@ -341,7 +341,8 @@ const COLLAPSED_KEY = 'gymapp-collapsed-v1';
 const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
-const APP_VERSION = '2026-04-29-v4';
+const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
+const APP_VERSION = '2026-04-30-v5';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -350,23 +351,25 @@ const EX_TYPES = [
 
 const COMMON_MUSCLES = ['Peito','Costas','Ombros','Bíceps','Tríceps','Antebraço','Quadríceps','Posterior','Glúteos','Panturrilha','Core','Lombar','Cardio'];
 
+/* Paleta refeita para máxima distinção entre grupos próximos.
+   Estratégia: matizes espaçados ~30° no círculo cromático, com saturação alta. */
 const MUSCLE_COLORS = {
-  'Peito':       '#ff5470',
-  'Costas':      '#3b82f6',
-  'Ombros':      '#fbbf24',
-  'Bíceps':      '#a855f7',
-  'Tríceps':     '#ec4899',
-  'Antebraço':   '#c084fc',
-  'Quadríceps':  '#f97316',
-  'Posterior':   '#ef4444',
-  'Glúteos':     '#f59e0b',
-  'Panturrilha': '#84cc16',
-  'Core':        '#14b8a6',
-  'Lombar':      '#06b6d4',
-  'Cardio':      '#22d3ee',
-  'Sem grupo':   '#666666',
+  'Peito':       '#ef4444', // vermelho puro
+  'Costas':      '#3b82f6', // azul
+  'Ombros':      '#fbbf24', // amarelo
+  'Bíceps':      '#a855f7', // roxo
+  'Tríceps':     '#f97316', // laranja (bem distinto de peito)
+  'Antebraço':   '#d946ef', // magenta
+  'Quadríceps':  '#06b6d4', // ciano
+  'Posterior':   '#f43f5e', // rosa-vermelho
+  'Glúteos':     '#d97706', // âmbar escuro
+  'Panturrilha': '#84cc16', // verde-lima
+  'Core':        '#14b8a6', // verde-água
+  'Lombar':      '#0ea5e9', // azul-céu
+  'Cardio':      '#10b981', // verde-esmeralda
+  'Sem grupo':   '#888888',
 };
-const FALLBACK_PALETTE = ['#ff5470','#3b82f6','#fbbf24','#a855f7','#ec4899','#f97316','#84cc16','#14b8a6','#06b6d4','#f59e0b','#ef4444','#22d3ee','#c084fc'];
+const FALLBACK_PALETTE = ['#ef4444','#3b82f6','#fbbf24','#a855f7','#f97316','#d946ef','#06b6d4','#f43f5e','#d97706','#84cc16','#14b8a6','#0ea5e9','#10b981'];
 const muscleColor = (name) => {
   if (!name) return MUSCLE_COLORS['Sem grupo'];
   if (MUSCLE_COLORS[name]) return MUSCLE_COLORS[name];
@@ -482,6 +485,26 @@ const driveLoadToken = () => loadLS(DRIVE_TOKEN_KEY, null);
 const driveSaveToken = (t) => { if (t) saveLS(DRIVE_TOKEN_KEY, t); else localStorage.removeItem(DRIVE_TOKEN_KEY); };
 
 let tokenClient = null;
+
+/* SYNC TIMES — registra última operação de cada tipo de import/export */
+const loadSyncTimes = () => loadLS(SYNC_TIMES_KEY, {});
+const recordSyncTime = (key) => {
+  const t = loadLS(SYNC_TIMES_KEY, {});
+  t[key] = Date.now();
+  saveLS(SYNC_TIMES_KEY, t);
+  return t;
+};
+const formatSyncTime = (ts) => {
+  if (!ts) return null;
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) return `Hoje às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  const diff = Math.floor((now - d) / (1000*60*60*24));
+  if (diff === 1) return `Ontem às ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+  if (diff < 7) return `${diff} dias atrás · ${d.toLocaleDateString('pt-BR')}`;
+  return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+};
 
 const driveInitTokenClient = (clientId, callback) => {
   if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
@@ -2288,6 +2311,8 @@ const ConfigView = ({ data, setData, toast }) => {
   const [driveSetup, setDriveSetup] = useState(false);
   const [config, setConfig] = useState(driveLoadConfig());
   const [authed, setAuthed] = useState(!!driveLoadToken());
+  const [syncTimes, setSyncTimes] = useState(loadSyncTimes());
+  const bumpSync = (key) => setSyncTimes(recordSyncTime(key));
 
   const handleSetClientId = (cid) => {
     const newCfg = { ...config, clientId: cid };
@@ -2330,6 +2355,7 @@ const ConfigView = ({ data, setData, toast }) => {
       const existing = await driveFindFile(token, DRIVE_FILE_NAME);
       const payload = { version: APP_VERSION, exportedAt: new Date().toISOString(), data };
       await driveUpload(token, JSON.stringify(payload, null, 2), existing && existing.id);
+      bumpSync('driveSave');
       toast('Salvo no Drive');
     } catch (e) {
       console.error(e); toast('Erro ao salvar: ' + e.message, 'error');
@@ -2366,6 +2392,7 @@ const ConfigView = ({ data, setData, toast }) => {
       a.href = url; a.download = `treino-backup-${dt}.json`;
       document.body.appendChild(a); a.click();
       setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+      bumpSync('fileExport');
       toast('Backup exportado.');
     } catch (e) { console.error(e); toast('Erro ao exportar.', 'error'); }
   };
@@ -2388,11 +2415,13 @@ const ConfigView = ({ data, setData, toast }) => {
   const doImport = () => {
     setData(importPreview);
     setConfirmReplace(false); setImportPreview(null);
+    bumpSync('fileImport');
     toast('Dados importados.');
   };
   const doImportFromDrive = () => {
     if (drivePreview) setData(drivePreview.payload);
     setConfirmReplaceFromDrive(false); setDrivePreview(null);
+    bumpSync('driveLoad');
     toast('Dados importados do Drive.');
   };
   const wipeAll = () => {
@@ -2456,8 +2485,18 @@ const ConfigView = ({ data, setData, toast }) => {
               ) : (
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
-                    <Btn variant="primary" onClick={driveSaveAction} icon={CloudUp} disabled={driveBusy}>Salvar</Btn>
-                    <Btn variant="ghost" onClick={driveLoadAction} icon={CloudDown} disabled={driveBusy}>Carregar</Btn>
+                    <div className="space-y-1">
+                      <Btn variant="primary" onClick={driveSaveAction} icon={CloudUp} disabled={driveBusy}>Salvar</Btn>
+                      <div className="text-[9px] font-mono text-[#666] text-center tracking-widest uppercase truncate">
+                        {syncTimes.driveSave ? formatSyncTime(syncTimes.driveSave) : 'Nunca'}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Btn variant="ghost" onClick={driveLoadAction} icon={CloudDown} disabled={driveBusy}>Carregar</Btn>
+                      <div className="text-[9px] font-mono text-[#666] text-center tracking-widest uppercase truncate">
+                        {syncTimes.driveLoad ? formatSyncTime(syncTimes.driveLoad) : 'Nunca'}
+                      </div>
+                    </div>
                   </div>
                   <Btn variant="ghost" onClick={driveDisconnect} icon={LogOut} size="sm" full>Desconectar</Btn>
                 </div>
@@ -2472,6 +2511,9 @@ const ConfigView = ({ data, setData, toast }) => {
             <p className="text-[10px] font-mono text-[#666] leading-relaxed">Baixa um JSON com todos os dados.</p>
           </div>
           <Btn icon={Download} onClick={exportData} variant="ghost" full>Exportar backup</Btn>
+          <div className="text-[9px] font-mono text-[#666] text-center tracking-widest uppercase">
+            Última: {syncTimes.fileExport ? formatSyncTime(syncTimes.fileExport) : 'Nunca'}
+          </div>
         </div>
         <div className="border border-[#1a1a1a] p-4 space-y-3">
           <div>
@@ -2480,6 +2522,9 @@ const ConfigView = ({ data, setData, toast }) => {
           </div>
           <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={handleFile} />
           <Btn icon={Upload} variant="ghost" onClick={()=>fileRef.current && fileRef.current.click()} full>Importar backup</Btn>
+          <div className="text-[9px] font-mono text-[#666] text-center tracking-widest uppercase">
+            Última: {syncTimes.fileImport ? formatSyncTime(syncTimes.fileImport) : 'Nunca'}
+          </div>
         </div>
         <div className="border border-[#ff4757]/30 p-4 space-y-3">
           <div>
