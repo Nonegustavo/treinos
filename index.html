@@ -10,6 +10,39 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <title>Treino</title>
 
+<!-- Favicon SVG inline (haltere preto sobre amarelo volt) -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d4ff00'/%3E%3Cg stroke='%23000' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'%3E%3Cpath d='M28 28 L72 72'/%3E%3Cpath d='M82 82 L86 86'/%3E%3Cpath d='M14 14 L18 18'/%3E%3Cpath d='M76 86 L92 70'/%3E%3Cpath d='M14 30 L30 14'/%3E%3Cpath d='M16 42 L42 16'/%3E%3Cpath d='M58 84 L84 58'/%3E%3C/g%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23d4ff00'/%3E%3Cg stroke='%23000' stroke-width='10' stroke-linecap='round' stroke-linejoin='round' fill='none'%3E%3Cpath d='M28 28 L72 72'/%3E%3Cpath d='M82 82 L86 86'/%3E%3Cpath d='M14 14 L18 18'/%3E%3Cpath d='M76 86 L92 70'/%3E%3Cpath d='M14 30 L30 14'/%3E%3Cpath d='M16 42 L42 16'/%3E%3Cpath d='M58 84 L84 58'/%3E%3C/g%3E%3C/svg%3E" />
+
+<!-- Manifest inline (data URI) para PWA instalável -->
+<link rel="manifest" id="manifest-link" />
+<script>
+(function(){
+  // Constrói o manifest dinamicamente com escopo correto baseado na URL atual.
+  // Isso permite que o app seja instalável como PWA mesmo sem arquivo manifest.json separado.
+  var iconSvg = "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D'http%3A//www.w3.org/2000/svg'%20viewBox%3D'0%200%20512%20512'%3E%3Crect%20width%3D'512'%20height%3D'512'%20fill%3D'%23d4ff00'/%3E%3Cg%20stroke%3D'%23000'%20stroke-width%3D'52'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%20fill%3D'none'%3E%3Cpath%20d%3D'M144%20144%20L368%20368'/%3E%3Cpath%20d%3D'M420%20420%20L440%20440'/%3E%3Cpath%20d%3D'M72%2072%20L92%2092'/%3E%3Cpath%20d%3D'M388%20440%20L470%20358'/%3E%3Cpath%20d%3D'M72%20154%20L154%2072'/%3E%3Cpath%20d%3D'M82%20214%20L214%2082'/%3E%3Cpath%20d%3D'M298%20430%20L430%20298'/%3E%3C/g%3E%3C/svg%3E";
+  var path = location.pathname.replace(/[^/]*$/, '');
+  var manifest = {
+    name: 'Treino',
+    short_name: 'Treino',
+    description: 'Tracker de treinos de academia',
+    start_url: path,
+    scope: path,
+    display: 'standalone',
+    orientation: 'portrait',
+    background_color: '#000000',
+    theme_color: '#000000',
+    icons: [
+      { src: iconSvg, sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+      { src: iconSvg, sizes: '512x512', type: 'image/svg+xml', purpose: 'any' },
+      { src: iconSvg, sizes: '512x512', type: 'image/svg+xml', purpose: 'maskable' }
+    ]
+  };
+  var blob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+  document.getElementById('manifest-link').href = URL.createObjectURL(blob);
+})();
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
@@ -290,6 +323,17 @@ input[type=number] { -moz-appearance: textfield; }
 <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
 <!-- Google Identity Services para OAuth -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+// Service worker mínimo registrado via Blob.
+// Funciona em browsers modernos no GitHub Pages (HTTPS) e melhora a instalabilidade do PWA.
+// Não faz cache offline — apenas valida o app como PWA pra o navegador oferecer "Instalar".
+if ('serviceWorker' in navigator && location.protocol === 'https:') {
+  var swCode = "self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('activate', e => self.clients.claim()); self.addEventListener('fetch', e => {});";
+  var swBlob = new Blob([swCode], { type: 'application/javascript' });
+  var swUrl = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl).catch(function(err) { console.warn('SW registration failed:', err); });
+}
+</script>
 </head>
 <body>
 <div id="root"></div>
@@ -342,7 +386,7 @@ const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v5';
+const APP_VERSION = '2026-04-30-v6';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -394,6 +438,7 @@ const WORKOUT_COLORS = [
 
 const RPE_LABELS = ['', 'Muito leve', 'Leve', 'Moderado', 'Difícil', 'Muito difícil'];
 const DISP_LABELS = ['', 'Muito fraco', 'Fraco', 'Normal', 'Forte', 'Muito forte'];
+const EXEC_LABELS = ['', 'Péssimo', 'Ruim', 'Bom', 'Ótimo', 'Perfeito'];
 
 const uid = () => Math.random().toString(36).slice(2,11) + Date.now().toString(36).slice(-4);
 
@@ -670,7 +715,7 @@ const ScaleSelector = ({ value, onChange, labels }) => (
         const sel = value === n;
         return (
           <button key={n} type="button" onClick={()=>onChange(sel?null:n)}
-            className={`h-11 border font-display text-2xl transition-colors ${sel?'border-[#d4ff00] text-[#d4ff00] bg-[#d4ff00]/10':'border-[#1a1a1a] text-[#666] hover:border-[#333]'}`}>
+            className={`h-11 border font-display text-2xl transition-colors flex items-center justify-center ${sel?'border-[#d4ff00] text-[#d4ff00] bg-[#d4ff00]/10':'border-[#1a1a1a] text-[#666] hover:border-[#333]'}`}>
             {n}
           </button>
         );
@@ -1186,6 +1231,49 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
     return () => clearInterval(t);
   }, [setActive]);
 
+  // Notificação de lembrete: dispara 2h após o início do treino, uma única vez por sessão.
+  // Funciona com a aba aberta (mesmo em background). Permissão pedida na primeira vez.
+  useEffect(() => {
+    if (!active) return;
+    if (typeof Notification === 'undefined') return;
+    if (active.reminderSent) return;
+    const REMINDER_MS = 2 * 60 * 60 * 1000; // 2 horas
+    const elapsed = Date.now() - active.startedAt;
+    const remaining = REMINDER_MS - elapsed;
+    if (remaining <= 0) return;
+
+    let cancelled = false;
+    const requestAndSchedule = () => {
+      const fire = () => {
+        if (cancelled) return;
+        try {
+          new Notification('Treino aberto há 2 horas', {
+            body: 'Você ainda está no treino "' + (active.templateName || '') + '". Lembre-se de finalizá-lo se já acabou.',
+            tag: 'treino-reminder-' + active.id,
+            requireInteraction: false,
+          });
+        } catch(e) { console.warn('Notification failed:', e); }
+        // marca na sessão pra não disparar de novo
+        setActive(prev => prev ? { ...prev, reminderSent: true } : prev);
+      };
+      if (Notification.permission === 'granted') {
+        const id = setTimeout(fire, remaining);
+        return () => { cancelled = true; clearTimeout(id); };
+      }
+      if (Notification.permission === 'default') {
+        Notification.requestPermission().then(p => {
+          if (cancelled) return;
+          if (p === 'granted') {
+            setTimeout(fire, remaining);
+          }
+        });
+      }
+      return () => { cancelled = true; };
+    };
+    const cleanup = requestAndSchedule();
+    return cleanup;
+  }, [active && active.id, active && active.reminderSent, setActive]);
+
   const updateExLog = (idx, patch) => setActive(prev => ({
     ...prev,
     exercises: prev.exercises.map((e,i)=>i===idx?{...e,...patch}:e)
@@ -1324,14 +1412,19 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
     onFinish(session);
   };
 
-  // verifica se há séries pendentes (alvo - completas > 0) em qualquer exercício
-  const hasIncomplete = useMemo(() => {
-    return active.exercises.some(e => {
-      const target = e.targetSets || 0;
-      const done = (e.sets||[]).filter(s=>s.completed).length;
-      return done < target;
+  // Progresso geral: total de séries concluídas / total de séries existentes (todos exercícios).
+  // Reage automaticamente a add/remove de séries e exercícios via active.exercises.
+  const progress = useMemo(() => {
+    let total = 0, done = 0;
+    active.exercises.forEach(e => {
+      const sets = e.sets || [];
+      total += sets.length;
+      done += sets.filter(s=>s.completed).length;
     });
+    return { total, done, pct: total > 0 ? (done / total) : 0 };
   }, [active.exercises]);
+
+  const hasIncomplete = progress.total > 0 && progress.done < progress.total;
 
   const tryFinish = () => {
     if (hasIncomplete) {
@@ -1349,14 +1442,18 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
 
   return (
     <div className="fixed inset-0 z-40 bg-black flex flex-col">
-      <div className="border-b border-[#1a1a1a] px-4 py-3 sticky top-0 bg-black z-30">
-        <div className="flex items-center justify-between">
+      <div className="border-b border-[#1a1a1a] sticky top-0 bg-black z-30">
+        <div className="px-4 py-3 flex items-center justify-between">
           <button onClick={()=>setConfirmExit(true)} className="text-[#888] p-1 -ml-1"><X size={20} /></button>
           <div className="text-center flex-1 min-w-0 mx-2">
             <div className="font-display text-lg tracking-wider leading-none truncate">{active.templateName}</div>
-            <div className="text-[10px] font-mono text-[#666] tracking-widest mt-0.5">{formatTime(elapsed)} · {doneCount}/{totalEx}</div>
+            <div className="text-[10px] font-mono text-[#666] tracking-widest mt-0.5">{formatTime(elapsed)} · {progress.done}/{progress.total} séries</div>
           </div>
           <button onClick={tryFinish} className="text-[#d4ff00] p-1"><Check size={22} /></button>
+        </div>
+        {/* Barra de progresso. Largura proporcional ao avanço total. */}
+        <div className="h-1 bg-[#0a0a0a] relative overflow-hidden">
+          <div className="absolute top-0 left-0 h-full bg-[#d4ff00] transition-all duration-300" style={{ width: `${progress.pct * 100}%` }} />
         </div>
       </div>
 
@@ -1367,7 +1464,7 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
         </button>
       )}
 
-      <div className="flex-1 overflow-y-auto safe-bottom-pad">
+      <div className="flex-1 overflow-y-auto pb-8">
         {active.exercises.map((exLog, idx) => {
           const exDef = data.exercises.find(e=>e.id===exLog.exerciseId);
           const key = `${active.id}-${idx}`;
@@ -1391,13 +1488,9 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
           );
         })}
 
-        <div className="p-4 flex gap-2">
+        <div className="p-4 flex gap-2 safe-bottom">
           <Btn variant="ghost" full icon={Plus} onClick={()=>setAddingEx(true)}>Adicionar exercício</Btn>
         </div>
-      </div>
-
-      <div className="border-t border-[#1a1a1a] bg-black px-4 py-3 fixed bottom-0 left-0 right-0 safe-bottom">
-        <Btn variant="primary" onClick={tryFinish} full size="lg" icon={Check}>Finalizar treino</Btn>
       </div>
 
       <Modal open={showWorkoutNotes} onClose={()=>setShowWorkoutNotes(false)} title="Notas do treino"
@@ -1453,7 +1546,7 @@ const ExerciseBlock = ({ idx, exLog, exDef, isCollapsed, onToggleCollapse, onUpd
 
   const sets = exLog.sets || [];
   const setsDone = sets.filter(s=>s.completed).length;
-  const target = exLog.targetSets || sets.length;
+  const target = sets.length; // reflete séries reais (alvo + extras - removidas)
   const isDone = target > 0 && setsDone >= target;
   const c = muscleColor(exDef.muscle);
   const isTime = exDef.type === 'time';
@@ -1543,6 +1636,36 @@ const ExerciseBlock = ({ idx, exLog, exDef, isCollapsed, onToggleCollapse, onUpd
               <Plus size={12} /> Adicionar série extra
             </button>
           </div>
+
+          {/* Nota de execução do exercício, inline (sem modal) */}
+          <div className="px-4 py-3 border-b border-[#0d0d0d]">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-2 text-center">
+              Nota de execução {exLog.execScore ? <span className="text-[#d4ff00] ml-1">· {EXEC_LABELS[exLog.execScore]}</span> : null}
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {[1,2,3,4,5].map(n => {
+                const sel = exLog.execScore === n;
+                return (
+                  <button key={n} type="button"
+                    onClick={()=>onUpdateLog({ execScore: sel ? null : n })}
+                    className={`h-10 border font-display text-xl transition-colors flex items-center justify-center ${sel?'border-[#d4ff00] text-[#d4ff00] bg-[#d4ff00]/10':'border-[#1a1a1a] text-[#666] hover:border-[#333]'}`}>
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Anotação rápida inline */}
+          <div className="px-4 py-3 border-b border-[#0d0d0d]">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Anotação rápida</div>
+            <textarea
+              value={exLog.sessionNote || ''}
+              onChange={(e)=>onUpdateLog({ sessionNote: e.target.value })}
+              placeholder="Ex: 'última série caiu', 'ombro incomodando'..."
+              rows={2}
+              className="w-full bg-black border border-[#1a1a1a] focus:border-[#d4ff00] outline-none px-3 py-2 text-white font-mono text-xs placeholder:text-[#444] resize-none transition-colors" />
+          </div>
         </>
       )}
 
@@ -1572,11 +1695,6 @@ const ExerciseBlock = ({ idx, exLog, exDef, isCollapsed, onToggleCollapse, onUpd
             <div className="text-[10px] font-mono text-[#666] mt-0.5">Tira este exercício do treino atual</div>
           </div>
         </button>
-        <div className="pt-2">
-          <TextArea label="Anotação rápida deste exercício hoje"
-            value={exLog.sessionNote||''} onChange={v=>onUpdateLog({sessionNote:v})}
-            placeholder="Ex: 'última série caiu muito', 'ombro incomodando'..." rows={3} />
-        </div>
       </Modal>
 
       <Modal open={showNotes} onClose={()=>setShowNotes(false)} title="Observações"
@@ -1668,7 +1786,7 @@ const ExerciseHistoryModal = ({ exerciseId, data, onClose }) => {
       const log = s.exercises.find(e => e.exerciseId === exerciseId);
       const sets = log ? (log.sets||[]).filter(x=>x.completed) : [];
       if (!sets.length) return null;
-      return { session: s, sets, sessionNote: log.sessionNote };
+      return { session: s, sets, sessionNote: log.sessionNote, execScore: log.execScore };
     })
     .filter(Boolean)
     .slice(0, 8);
@@ -1681,13 +1799,16 @@ const ExerciseHistoryModal = ({ exerciseId, data, onClose }) => {
       ) : (
         <div className="space-y-3">
           {sessions.map((entry, i) => {
-            const { session, sets, sessionNote } = entry;
+            const { session, sets, sessionNote, execScore } = entry;
             const max1RM = exDef && exDef.type === 'weight' ? Math.max(...sets.map(s=>s.oneRM||0)) : 0;
             return (
               <div key={i} className="border border-[#1a1a1a] p-3">
                 <div className="flex items-baseline justify-between mb-0.5 gap-2">
                   <div className="font-display text-base tracking-wider truncate">{session.templateName || 'Treino livre'}</div>
-                  {max1RM > 0 && <div className="text-[10px] font-mono text-[#d4ff00] flex-shrink-0">1RM {max1RM}kg</div>}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {execScore && <span className="text-[10px] font-mono text-[#d4ff00]">Exec {execScore}/5</span>}
+                    {max1RM > 0 && <span className="text-[10px] font-mono text-[#d4ff00]">1RM {max1RM}kg</span>}
+                  </div>
                 </div>
                 <div className="text-[10px] font-mono text-[#666] tracking-widest mb-2">{formatDateTime(session.date)}</div>
                 <div className="space-y-0.5">
@@ -1832,7 +1953,10 @@ const SummaryModal = ({ active, data, onConfirm, onCancel, onUpdateActive }) => 
               <div key={group.exerciseId} className="border border-[#1a1a1a] border-l-4 p-3 space-y-2" style={{ borderLeftColor: c, background: withAlpha(c, 0.05) }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="font-mono text-sm text-white truncate flex-1">{group.def.name}</div>
-                  <Toggle value={willApply} onChange={(v)=>setApplyByExercise(prev => ({...prev, [group.exerciseId]: v}))} />
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[9px] font-mono uppercase tracking-widest text-[#666]">Atualizar</span>
+                    <CompletedCheckbox checked={willApply} onChange={()=>setApplyByExercise(prev => ({...prev, [group.exerciseId]: !prev[group.exerciseId]}))} />
+                  </div>
                 </div>
                 <div className="space-y-1">
                   {group.diffs.map((d, di) => (
@@ -1933,32 +2057,28 @@ const HistoryView = ({ data, onSelect }) => {
 };
 
 const sessionToTSV = (session, data) => {
+  // Formato: data \t treino \t exercício \t grupo \t nota_exec \t carga1 \t reps1 \t carga2 \t reps2 \t ...
+  // Sem cabeçalho. Todas as séries concluídas (sem limite). Vírgula como separador decimal.
   const dateStr = formatDateForExcel(session.date);
   const tname = session.templateName || 'Treino livre';
   const lines = [];
   session.exercises.forEach(e => {
     const def = data.exercises.find(d=>d.id===e.exerciseId);
     const exName = (def && def.name) || 'Exercício removido';
+    const muscle = (def && def.muscle) || '';
+    const execScore = e.execScore == null ? '' : String(e.execScore);
     const sets = (e.sets||[]).filter(s=>s.completed);
-    const cells = [dateStr, tname, exName];
-    for (let i = 0; i < 5; i++) {
-      const s = sets[i];
-      if (s) {
-        const w = s.weight === '' || s.weight == null ? '' : String(s.weight).replace('.', ',');
-        const r = s.reps === '' || s.reps == null ? '' : String(s.reps);
-        const t = s.time === '' || s.time == null ? '' : String(s.time);
-        if (def && def.type === 'time') {
-          cells.push(w);
-          cells.push(t);
-        } else {
-          cells.push(w);
-          cells.push(r);
-        }
+    const cells = [dateStr, tname, exName, muscle, execScore];
+    sets.forEach(s => {
+      const w = s.weight === '' || s.weight == null ? '' : String(s.weight).replace('.', ',');
+      const r = s.reps === '' || s.reps == null ? '' : String(s.reps);
+      const t = s.time === '' || s.time == null ? '' : String(s.time);
+      if (def && def.type === 'time') {
+        cells.push(w); cells.push(t);
       } else {
-        cells.push(''); cells.push('');
+        cells.push(w); cells.push(r);
       }
-    }
-    cells.push((e.sessionNote || '').replace(/\t/g,' ').replace(/\r?\n/g,' '));
+    });
     lines.push(cells.join('\t'));
   });
   return lines.join('\r\n');
@@ -2040,9 +2160,16 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
         return (
           <div key={i} className="border-b border-[#1a1a1a] border-l-4" style={{ borderLeftColor: c, background: withAlpha(c, 0.04) }}>
             <div className="px-4 py-3">
-              <div className="flex items-baseline justify-between mb-2">
-                <h3 className="font-display text-lg tracking-wider leading-none">{(def && def.name) || 'Exercício removido'}</h3>
-                <div className="text-[10px] font-mono text-[#666]">{sets.length} séries</div>
+              <div className="flex items-baseline justify-between mb-2 gap-2">
+                <h3 className="font-display text-lg tracking-wider leading-none flex-1 min-w-0 truncate">{(def && def.name) || 'Exercício removido'}</h3>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {e.execScore && (
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4ff00]">
+                      Exec {e.execScore}/5
+                    </span>
+                  )}
+                  <div className="text-[10px] font-mono text-[#666]">{sets.length} séries</div>
+                </div>
               </div>
               {sets.length > 0 && (
                 <div className="space-y-1 mb-2">
@@ -2089,6 +2216,7 @@ const ProgressView = ({ data }) => {
           date: s.date, dateStr: formatShort(s.date),
           templateName: s.templateName || 'Treino livre',
           sessionId: s.id,
+          execScore: e.execScore || null,
           max1RM, maxW, maxReps, maxTime, volume,
           sets, setsCount: sets.length
         });
@@ -2181,6 +2309,7 @@ const ProgressView = ({ data }) => {
                   {!isTime && <span>Pico {s.maxW}kg × {s.maxReps}</span>}
                   {isTime && <span className="text-[#d4ff00]">Pico {s.maxTime}s</span>}
                   <span>{s.setsCount} séries</span>
+                  {s.execScore && <span className="text-[#d4ff00]">Exec {s.execScore}/5</span>}
                 </div>
                 <div className="space-y-0.5">
                   {s.sets.map((set, si) => (
@@ -2583,6 +2712,51 @@ function App() {
   const [viewingSession, setViewingSession] = useState(null);
   const [finishedSession, setFinishedSession] = useState(null);
   const { show: toast, Toast } = useToast();
+
+  // Recuperação: se o app abriu com um treino ativo cujo último update foi há muito tempo
+  // (>4h), oferecer ao usuário continuar, finalizar agora, ou descartar.
+  // Isso cobre o cenário "esqueci o app aberto, voltei dia seguinte".
+  // Para fechamentos curtos (poucos minutos), o fluxo é direto sem atrito.
+  const STALE_THRESHOLD_MS = 4 * 60 * 60 * 1000;
+  const [staleCheckDone, setStaleCheckDone] = useState(false);
+  const [staleSession, setStaleSession] = useState(null);
+  useEffect(() => {
+    if (staleCheckDone) return;
+    if (!active) { setStaleCheckDone(true); return; }
+    const last = active.lastUpdatedAt || active.startedAt;
+    if (Date.now() - last > STALE_THRESHOLD_MS) {
+      setStaleSession(active);
+    }
+    setStaleCheckDone(true);
+  }, [staleCheckDone, active]);
+
+  // Atualiza um timestamp de "última atividade" sempre que o active muda.
+  // Isso permite distinguir "fechei e voltei rápido" de "esqueci aberto".
+  useEffect(() => {
+    if (!active) return;
+    if (!staleSession) {
+      // Só atualiza lastUpdatedAt se não estamos no meio de uma decisão de "stale"
+      const now = Date.now();
+      if (!active.lastUpdatedAt || now - active.lastUpdatedAt > 30000) {
+        setActive({ ...active, lastUpdatedAt: now });
+      }
+    }
+  }, [active && active.exercises, staleSession]);
+
+  const handleStaleContinue = () => setStaleSession(null);
+  const handleStaleDiscard = () => { setActive(null); setStaleSession(null); };
+  const handleStaleFinish = () => {
+    // Salva como sessão finalizada usando o que já estava registrado.
+    if (staleSession) {
+      const now = Date.now();
+      // Como duração, usa o tempo desde startedAt até o último update conhecido (não inflar com horas paradas)
+      const duration = (staleSession.lastUpdatedAt || staleSession.startedAt) - staleSession.startedAt;
+      const finalized = { ...staleSession, finishedAt: now, duration: Math.max(0, duration) };
+      setData(d => ({ ...d, sessions: [finalized, ...d.sessions] }));
+    }
+    setActive(null);
+    setStaleSession(null);
+  };
 
   const goTab = useCallback((newTab) => {
     setViewingSession(null);
