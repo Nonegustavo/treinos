@@ -1,0 +1,2634 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+<meta name="theme-color" content="#000000" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<meta name="apple-mobile-web-app-title" content="Treino" />
+<meta name="mobile-web-app-capable" content="yes" />
+<title>Treino</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<style>
+*, *::before, *::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: currentColor; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; background: #000; color: #fff; }
+body { font-family: 'JetBrains Mono', ui-monospace, monospace; overscroll-behavior-y: none; -webkit-font-smoothing: antialiased; }
+#root { min-height: 100vh; background: #000; }
+button { background: transparent; padding: 0; cursor: pointer; font: inherit; color: inherit; text-align: inherit; }
+input, textarea, select { font: inherit; color: inherit; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+input[type=number] { -moz-appearance: textfield; }
+::selection { background: #d4ff00; color: #000; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #000; }
+::-webkit-scrollbar-thumb { background: #1a1a1a; }
+
+.flex { display: flex; }
+.inline-block { display: inline-block; }
+.inline-flex { display: inline-flex; }
+.block { display: block; }
+.hidden { display: none; }
+.grid { display: grid; }
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1 1 0%; min-width: 0; }
+.flex-shrink-0 { flex-shrink: 0; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.items-baseline { align-items: baseline; }
+.items-end { align-items: flex-end; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.justify-end { justify-content: flex-end; }
+.gap-1 { gap: 0.25rem; }
+.gap-1\.5 { gap: 0.375rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.gap-px { gap: 1px; }
+.gap-0\.5 { gap: 0.125rem; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed { position: fixed; }
+.sticky { position: sticky; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.top-0 { top: 0; }
+.top-1\/2 { top: 50%; }
+.right-3 { right: 0.75rem; }
+.bottom-0 { bottom: 0; }
+.left-0 { left: 0; }
+.-translate-y-1\/2 { transform: translateY(-50%); }
+.z-30 { z-index: 30; }
+.z-40 { z-index: 40; }
+.z-50 { z-index: 50; }
+.w-full { width: 100%; }
+.w-5 { width: 1.25rem; }
+.w-6 { width: 1.5rem; }
+.w-7 { width: 1.75rem; }
+.w-8 { width: 2rem; }
+.w-10 { width: 2.5rem; }
+.w-12 { width: 3rem; }
+.w-16 { width: 4rem; }
+.w-20 { width: 5rem; }
+.h-full { height: 100%; }
+.h-1 { height: 0.25rem; }
+.h-5 { height: 1.25rem; }
+.h-6 { height: 1.5rem; }
+.h-7 { height: 1.75rem; }
+.h-8 { height: 2rem; }
+.h-10 { height: 2.5rem; }
+.h-11 { height: 2.75rem; }
+.h-12 { height: 3rem; }
+.h-16 { height: 4rem; }
+.h-20 { height: 5rem; }
+.min-h-screen { min-height: 100vh; }
+.min-w-0 { min-width: 0; }
+.max-w-md { max-width: 28rem; }
+.max-w-xs { max-width: 20rem; }
+.max-h-\[92vh\] { max-height: 92vh; }
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 0.75rem; }
+.p-4 { padding: 1rem; }
+.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+.px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.py-1\.5 { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.py-6 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+.py-16 { padding-top: 4rem; padding-bottom: 4rem; }
+.pt-2 { padding-top: 0.5rem; }
+.pl-3 { padding-left: 0.75rem; }
+.pb-24 { padding-bottom: 6rem; }
+.pb-32 { padding-bottom: 8rem; }
+.mt-0\.5 { margin-top: 0.125rem; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-1\.5 { margin-top: 0.375rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 0.75rem; }
+.mt-4 { margin-top: 1rem; }
+.mt-6 { margin-top: 1.5rem; }
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.ml-2 { margin-left: 0.5rem; }
+.ml-auto { margin-left: auto; }
+.-ml-1 { margin-left: -0.25rem; }
+.-mx-4 { margin-left: -1rem; margin-right: -1rem; }
+.space-y-1 > * + * { margin-top: 0.25rem; }
+.space-y-2 > * + * { margin-top: 0.5rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
+.divide-y > * + * { border-top-width: 1px; }
+.divide-\[\#0d0d0d\] > * + * { border-top-color: #0d0d0d; }
+.divide-\[\#1a1a1a\] > * + * { border-top-color: #1a1a1a; }
+.text-\[9px\] { font-size: 9px; line-height: 1.3; }
+.text-\[10px\] { font-size: 10px; line-height: 1.3; }
+.text-\[11px\] { font-size: 11px; line-height: 1.4; }
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-base { font-size: 1rem; line-height: 1.5rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.6rem; }
+.text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.text-3xl { font-size: 1.875rem; line-height: 1.2; }
+.font-mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+.font-display { font-family: 'Bebas Neue', sans-serif; letter-spacing: 0.05em; }
+.font-medium { font-weight: 500; }
+.font-bold { font-weight: 700; }
+.uppercase { text-transform: uppercase; }
+.normal-case { text-transform: none; }
+.tracking-wider { letter-spacing: 0.05em; }
+.tracking-widest { letter-spacing: 0.1em; }
+.tracking-normal { letter-spacing: normal; }
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.leading-none { line-height: 1; }
+.leading-tight { line-height: 1.25; }
+.leading-relaxed { line-height: 1.625; }
+.whitespace-pre-wrap { white-space: pre-wrap; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
+.break-words { overflow-wrap: break-word; }
+.border { border-width: 1px; }
+.border-2 { border-width: 2px; }
+.border-t { border-top-width: 1px; }
+.border-b { border-bottom-width: 1px; }
+.border-l-2 { border-left-width: 2px; }
+.border-l-4 { border-left-width: 4px; }
+.border-dashed { border-style: dashed; }
+.last\:border-b-0:last-child { border-bottom-width: 0; }
+.text-white { color: #fff; }
+.text-black { color: #000; }
+.text-\[\#666\] { color: #666; }
+.text-\[\#888\] { color: #888; }
+.text-\[\#444\] { color: #444; }
+.text-\[\#aaa\] { color: #aaa; }
+.text-\[\#d4ff00\] { color: #d4ff00; }
+.text-\[\#ff4757\] { color: #ff4757; }
+.bg-black { background-color: #000; }
+.bg-\[\#070707\] { background-color: #070707; }
+.bg-\[\#0a0a0a\] { background-color: #0a0a0a; }
+.bg-\[\#0d0d0d\] { background-color: #0d0d0d; }
+.bg-\[\#050505\] { background-color: #050505; }
+.bg-\[\#1a1a1a\] { background-color: #1a1a1a; }
+.bg-\[\#d4ff00\] { background-color: #d4ff00; }
+.bg-\[\#d4ff00\]\/10 { background-color: rgba(212,255,0,0.1); }
+.bg-\[\#ff4757\]\/10 { background-color: rgba(255, 71, 87, 0.1); }
+.bg-black\/80 { background-color: rgba(0, 0, 0, 0.8); }
+.bg-transparent { background-color: transparent; }
+.border-\[\#1a1a1a\] { border-color: #1a1a1a; }
+.border-\[\#0d0d0d\] { border-color: #0d0d0d; }
+.border-\[\#222\] { border-color: #222; }
+.border-\[\#333\] { border-color: #333; }
+.border-\[\#666\] { border-color: #666; }
+.border-\[\#d4ff00\] { border-color: #d4ff00; }
+.border-\[\#d4ff00\]\/40 { border-color: rgba(212, 255, 0, 0.4); }
+.border-\[\#ff4757\]\/30 { border-color: rgba(255, 71, 87, 0.3); }
+.border-\[\#ff4757\]\/40 { border-color: rgba(255, 71, 87, 0.4); }
+.transition-all { transition: all 0.15s; }
+.transition-colors { transition: color 0.15s, background-color 0.15s, border-color 0.15s; }
+.duration-150 { transition-duration: 150ms; }
+.outline-none { outline: none; }
+.opacity-30 { opacity: 0.3; }
+.opacity-40 { opacity: 0.4; }
+.opacity-60 { opacity: 0.6; }
+.opacity-90 { opacity: 0.9; }
+.cursor-pointer { cursor: pointer; }
+.cursor-not-allowed { cursor: not-allowed; }
+.overflow-hidden { overflow: hidden; }
+.overflow-y-auto { overflow-y: auto; }
+.resize-none { resize: none; }
+.pointer-events-none { pointer-events: none; }
+.hover\:bg-\[\#0a0a0a\]:hover { background-color: #0a0a0a; }
+.hover\:border-\[\#333\]:hover { border-color: #333; }
+.hover\:border-\[\#444\]:hover { border-color: #444; }
+.hover\:border-\[\#666\]:hover { border-color: #666; }
+.hover\:text-white:hover { color: #fff; }
+.hover\:opacity-90:hover { opacity: 0.9; }
+.hover\:bg-\[\#ff4757\]\/10:hover { background-color: rgba(255, 71, 87, 0.1); }
+.hover\:bg-\[\#d4ff00\]\/10:hover { background-color: rgba(212, 255, 0, 0.1); }
+.focus\:border-\[\#d4ff00\]:focus { border-color: #d4ff00; }
+.active\:scale-\[0\.98\]:active { transform: scale(0.98); }
+.disabled\:opacity-30:disabled { opacity: 0.3; }
+.disabled\:opacity-40:disabled { opacity: 0.4; }
+.disabled\:cursor-not-allowed:disabled { cursor: not-allowed; }
+.placeholder\:text-\[\#444\]::placeholder { color: #444; }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-bottom-pad { padding-bottom: calc(8rem + env(safe-area-inset-bottom)); }
+
+/* Tabela de séries */
+.set-table { width: 100%; border-collapse: collapse; }
+.set-table th, .set-table td { padding: 6px 4px; vertical-align: middle; }
+.set-table th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; font-weight: normal; text-align: center; border-bottom: 1px solid #0d0d0d; background: #050505; }
+.set-table td { border-bottom: 1px solid #0d0d0d; text-align: center; font-size: 0.875rem; }
+.set-table tr:last-child td { border-bottom: none; }
+.set-table .col-num { width: 28px; color: #666; font-size: 12px; }
+.set-table .col-action { width: 32px; }
+.set-table .col-check { width: 44px; }
+.set-table .cell-input { width: 100%; background: transparent; border: 1px solid #1a1a1a; color: white; padding: 6px 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; text-align: center; outline: none; }
+.set-table .cell-input:focus { border-color: #d4ff00; }
+.set-table .cell-input:disabled { border-color: transparent; color: #666; }
+.set-table tr.completed td { background: #0a0a0a; }
+.set-table .cell-1rm { color: #d4ff00; font-size: 12px; }
+
+/* Bottom nav dinâmica - flex em vez de grid fixo */
+.bottom-nav {
+  display: flex;
+  width: 100%;
+}
+.bottom-nav > button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.75rem 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  transition: color 0.15s;
+}
+.bottom-nav > button > span {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+@media (min-width: 640px) {
+  .sm\:items-center { align-items: center; }
+  .sm\:max-w-md { max-width: 28rem; }
+  .sm\:border { border-width: 1px; }
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/prop-types@15.8.1/prop-types.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
+<!-- Google Identity Services para OAuth -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+const { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } = Recharts;
+
+/* ICONS */
+const Icon = ({ d, size = 16, strokeWidth = 2, className = '', style }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
+    className={className} style={style} dangerouslySetInnerHTML={{ __html: d }} />
+);
+const mkI = (d) => (props) => <Icon d={d} {...props} />;
+const Plus = mkI('<path d="M5 12h14"/><path d="M12 5v14"/>');
+const X = mkI('<path d="M18 6 6 18"/><path d="M6 6l12 12"/>');
+const Check = mkI('<path d="M20 6 9 17l-5-5"/>');
+const Edit3 = mkI('<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>');
+const Trash2 = mkI('<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>');
+const Play = mkI('<polygon points="5 3 19 12 5 21 5 3"/>');
+const ChevronRight = mkI('<path d="m9 18 6-6-6-6"/>');
+const ChevronLeft = mkI('<path d="m15 18-6-6 6-6"/>');
+const ChevronDown = mkI('<path d="m6 9 6 6 6-6"/>');
+const ChevronUp = mkI('<path d="m18 15-6-6-6 6"/>');
+const Dumbbell = mkI('<path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/>');
+const Clock = mkI('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>');
+const ArrowUp = mkI('<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>');
+const ArrowDown = mkI('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>');
+const Save = mkI('<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>');
+const BarChart3 = mkI('<path d="M3 3v18h18"/><path d="M7 16V8"/><path d="M12 16V4"/><path d="M17 16v-6"/>');
+const HistoryIcon = mkI('<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>');
+const Home = mkI('<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><polyline points="9 22 9 12 15 12 15 22"/>');
+const Activity = mkI('<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>');
+const Settings = mkI('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>');
+const Download = mkI('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>');
+const Upload = mkI('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>');
+const Repeat = mkI('<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>');
+const Copy = mkI('<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>');
+const Cloud = mkI('<path d="M17.5 19a4.5 4.5 0 1 0 0-9h-1.8A7 7 0 1 0 4 15.7"/>');
+const CloudUp = mkI('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m16 16-4-4-4 4"/>');
+const CloudDown = mkI('<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M12 12v9"/><path d="m8 17 4 4 4-4"/>');
+const LogOut = mkI('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>');
+
+/* CONSTANTS */
+const STORAGE_KEY = 'gymapp-data-v1';
+const ACTIVE_KEY  = 'gymapp-active-v1';
+const COLLAPSED_KEY = 'gymapp-collapsed-v1';
+const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
+const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
+const DRIVE_FILE_NAME = 'treino-backup.json';
+const APP_VERSION = '2026-04-29-v4';
+
+const EX_TYPES = [
+  { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
+  { id: 'time',   label: 'Tempo (isometria)', icon: Clock,    hint: 'Para exercícios cronometrados. Aceita carga adicional opcional.' },
+];
+
+const COMMON_MUSCLES = ['Peito','Costas','Ombros','Bíceps','Tríceps','Antebraço','Quadríceps','Posterior','Glúteos','Panturrilha','Core','Lombar','Cardio'];
+
+const MUSCLE_COLORS = {
+  'Peito':       '#ff5470',
+  'Costas':      '#3b82f6',
+  'Ombros':      '#fbbf24',
+  'Bíceps':      '#a855f7',
+  'Tríceps':     '#ec4899',
+  'Antebraço':   '#c084fc',
+  'Quadríceps':  '#f97316',
+  'Posterior':   '#ef4444',
+  'Glúteos':     '#f59e0b',
+  'Panturrilha': '#84cc16',
+  'Core':        '#14b8a6',
+  'Lombar':      '#06b6d4',
+  'Cardio':      '#22d3ee',
+  'Sem grupo':   '#666666',
+};
+const FALLBACK_PALETTE = ['#ff5470','#3b82f6','#fbbf24','#a855f7','#ec4899','#f97316','#84cc16','#14b8a6','#06b6d4','#f59e0b','#ef4444','#22d3ee','#c084fc'];
+const muscleColor = (name) => {
+  if (!name) return MUSCLE_COLORS['Sem grupo'];
+  if (MUSCLE_COLORS[name]) return MUSCLE_COLORS[name];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return FALLBACK_PALETTE[h % FALLBACK_PALETTE.length];
+};
+
+const WORKOUT_COLORS = [
+  { id: 'volt',   value: '#d4ff00', label: 'Volt' },
+  { id: 'red',    value: '#ff5470', label: 'Vermelho' },
+  { id: 'blue',   value: '#3b82f6', label: 'Azul' },
+  { id: 'amber',  value: '#fbbf24', label: 'Âmbar' },
+  { id: 'purple', value: '#a855f7', label: 'Roxo' },
+  { id: 'pink',   value: '#ec4899', label: 'Rosa' },
+  { id: 'orange', value: '#f97316', label: 'Laranja' },
+  { id: 'lime',   value: '#84cc16', label: 'Lima' },
+  { id: 'teal',   value: '#14b8a6', label: 'Verde-água' },
+  { id: 'cyan',   value: '#06b6d4', label: 'Ciano' },
+  { id: 'gray',   value: '#666666', label: 'Cinza' },
+];
+
+const RPE_LABELS = ['', 'Muito leve', 'Leve', 'Moderado', 'Difícil', 'Muito difícil'];
+const DISP_LABELS = ['', 'Muito fraco', 'Fraco', 'Normal', 'Forte', 'Muito forte'];
+
+const uid = () => Math.random().toString(36).slice(2,11) + Date.now().toString(36).slice(-4);
+
+const calc1RM = (weight, reps) => {
+  const w = Number(weight) || 0;
+  const r = Number(reps) || 0;
+  if (w <= 0 || r < 1) return 0;
+  if (r === 1) return Math.round(w*10)/10;
+  return Math.round(w * (1 + r/30) * 10) / 10;
+};
+
+const formatTime = (s) => {
+  if (s == null || isNaN(s)) return '0:00';
+  const sec = Math.max(0, Math.floor(s));
+  const m = Math.floor(sec/60);
+  const r = sec % 60;
+  return `${m}:${String(r).padStart(2,'0')}`;
+};
+const formatShort    = (ts) => new Date(ts).toLocaleDateString('pt-BR', {day:'2-digit', month:'short'});
+const formatDate     = (ts) => new Date(ts).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'2-digit'});
+const formatDateTime = (ts) => new Date(ts).toLocaleString('pt-BR', {day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit'});
+const formatDateForExcel = (ts) => new Date(ts).toLocaleDateString('pt-BR');
+
+/* hex + alpha helper */
+const withAlpha = (hex, alpha) => {
+  if (!hex || typeof hex !== 'string') return '#0000';
+  const h = hex.replace('#','');
+  if (h.length !== 6) return hex;
+  const r = parseInt(h.slice(0,2),16);
+  const g = parseInt(h.slice(2,4),16);
+  const b = parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
+
+const normalizeTemplateExercise = (we, exDef) => {
+  const targetSets = Math.max(1, we.targetSets || 3);
+  if (Array.isArray(we.setRefs) && we.setRefs.length) {
+    if (we.setRefs.length === targetSets) return we;
+    const adjusted = [];
+    for (let i = 0; i < targetSets; i++) {
+      adjusted.push(we.setRefs[i] || we.setRefs[we.setRefs.length-1] || { weight: '', reps: '', time: '' });
+    }
+    return { ...we, setRefs: adjusted };
+  }
+  const baseW = we.lastWeight != null ? we.lastWeight : '';
+  const baseReps = we.targetRepsMax || we.targetRepsMin || '';
+  const baseTime = we.targetTime || '';
+  const isTime = exDef && exDef.type === 'time';
+  const setRefs = [];
+  for (let i = 0; i < targetSets; i++) {
+    if (isTime) setRefs.push({ weight: baseW, reps: '', time: baseTime });
+    else setRefs.push({ weight: baseW, reps: baseReps, time: '' });
+  }
+  return { ...we, setRefs };
+};
+
+/* STORAGE */
+const loadLS = (key, fallback) => {
+  try { const r = localStorage.getItem(key); return r ? JSON.parse(r) : fallback; } catch { return fallback; }
+};
+const saveLS = (key, val) => {
+  try { localStorage.setItem(key, JSON.stringify(val)); }
+  catch (e) { console.error('Falha ao salvar:', e); alert('Não foi possível salvar. Armazenamento cheio.'); }
+};
+
+const useStorage = () => {
+  const [data, setData] = useState(() => loadLS(STORAGE_KEY, { exercises: [], workouts: [], sessions: [] }));
+  const [active, setActiveState] = useState(() => loadLS(ACTIVE_KEY, null));
+  const saveTimer = useRef(null);
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return; }
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => saveLS(STORAGE_KEY, data), 200);
+    return () => saveTimer.current && clearTimeout(saveTimer.current);
+  }, [data]);
+  const setActive = useCallback((s) => {
+    setActiveState(s);
+    if (s) saveLS(ACTIVE_KEY, s);
+    else   localStorage.removeItem(ACTIVE_KEY);
+  }, []);
+  return { data, setData, active, setActive };
+};
+
+/* GOOGLE DRIVE INTEGRATION */
+const driveLoadConfig = () => loadLS(DRIVE_CONFIG_KEY, { clientId: '' });
+const driveSaveConfig = (cfg) => saveLS(DRIVE_CONFIG_KEY, cfg);
+const driveLoadToken = () => loadLS(DRIVE_TOKEN_KEY, null);
+const driveSaveToken = (t) => { if (t) saveLS(DRIVE_TOKEN_KEY, t); else localStorage.removeItem(DRIVE_TOKEN_KEY); };
+
+let tokenClient = null;
+
+const driveInitTokenClient = (clientId, callback) => {
+  if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+    throw new Error('Google Identity Services não carregado. Verifique a conexão com a internet.');
+  }
+  tokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: clientId,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: callback,
+  });
+  return tokenClient;
+};
+
+const driveRequestToken = (interactive = true) => new Promise((resolve, reject) => {
+  if (!tokenClient) return reject(new Error('Cliente OAuth não inicializado.'));
+  tokenClient.callback = (resp) => {
+    if (resp.error) return reject(new Error(resp.error_description || resp.error));
+    const token = { access_token: resp.access_token, expires_at: Date.now() + (resp.expires_in * 1000) };
+    driveSaveToken(token);
+    resolve(token);
+  };
+  tokenClient.requestAccessToken({ prompt: interactive ? 'consent' : '' });
+});
+
+const driveGetValidToken = async () => {
+  const t = driveLoadToken();
+  if (t && t.access_token && t.expires_at && Date.now() < t.expires_at - 60000) return t;
+  return await driveRequestToken(false);
+};
+
+const driveFindFile = async (token, name) => {
+  const q = encodeURIComponent(`name='${name}' and trashed=false`);
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name,modifiedTime)&pageSize=10`, {
+    headers: { Authorization: `Bearer ${token.access_token}` }
+  });
+  if (!resp.ok) throw new Error(`Drive list: ${resp.status}`);
+  const json = await resp.json();
+  // pega o mais recente
+  const files = json.files || [];
+  files.sort((a,b) => new Date(b.modifiedTime) - new Date(a.modifiedTime));
+  return files[0] || null;
+};
+
+const driveUpload = async (token, content, existingFileId) => {
+  const metadata = { name: DRIVE_FILE_NAME, mimeType: 'application/json' };
+  const boundary = '-------treino' + uid();
+  const delim = `\r\n--${boundary}\r\n`;
+  const close = `\r\n--${boundary}--`;
+  const body =
+    delim + 'Content-Type: application/json; charset=UTF-8\r\n\r\n' + JSON.stringify(metadata) +
+    delim + 'Content-Type: application/json\r\n\r\n' + content + close;
+
+  const url = existingFileId
+    ? `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart`
+    : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+  const method = existingFileId ? 'PATCH' : 'POST';
+  const resp = await fetch(url, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token.access_token}`,
+      'Content-Type': `multipart/related; boundary=${boundary}`,
+    },
+    body
+  });
+  if (!resp.ok) {
+    const err = await resp.text();
+    throw new Error(`Drive upload: ${resp.status} ${err}`);
+  }
+  return await resp.json();
+};
+
+const driveDownload = async (token, fileId) => {
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+    headers: { Authorization: `Bearer ${token.access_token}` }
+  });
+  if (!resp.ok) throw new Error(`Drive download: ${resp.status}`);
+  return await resp.text();
+};
+
+/* UI PRIMITIVES */
+const Btn = ({ children, onClick, variant='primary', size='md', icon:IconC, type='button', disabled, full, style }) => {
+  const sizes = { sm:'px-3 py-2 text-xs', md:'px-4 py-3 text-sm', lg:'px-5 py-4 text-base' };
+  const variants = {
+    primary: 'bg-[#d4ff00] text-black hover:opacity-90',
+    ghost:   'bg-transparent text-white border border-[#1a1a1a] hover:border-[#333]',
+    danger:  'bg-transparent text-[#ff4757] border border-[#ff4757]/30 hover:bg-[#ff4757]/10',
+    dark:    'bg-[#0d0d0d] text-white border border-[#1a1a1a] hover:border-[#333]',
+    accent:  'bg-transparent text-[#d4ff00] border border-[#d4ff00]/40 hover:bg-[#d4ff00]/10',
+  };
+  return (
+    <button type={type} onClick={onClick} disabled={disabled} style={style}
+      className={`${sizes[size]} ${variants[variant]} ${full?'w-full':''} ${disabled?'opacity-40 cursor-not-allowed':''} font-mono uppercase tracking-wider font-medium transition-all duration-150 active:scale-[0.98] flex items-center justify-center gap-2`}>
+      {IconC && <IconC size={size==='sm'?14:16} strokeWidth={2.2} />}
+      {children}
+    </button>
+  );
+};
+
+const Input = ({ label, value, onChange, type='text', placeholder, suffix, inputMode, step, min, max, autoFocus, onFocus }) => (
+  <label className="block">
+    {label && <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">{label}</div>}
+    <div className="relative">
+      <input type={type} value={value == null ? '' : String(value)} onChange={(e)=>onChange(e.target.value)}
+        onFocus={onFocus}
+        placeholder={placeholder} inputMode={inputMode} step={step} min={min} max={max} autoFocus={autoFocus}
+        className="w-full bg-black border border-[#1a1a1a] focus:border-[#d4ff00] outline-none px-3 py-3 text-white font-mono text-sm placeholder:text-[#444] transition-colors" />
+      {suffix && <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[#666] font-mono text-xs pointer-events-none">{suffix}</span>}
+    </div>
+  </label>
+);
+
+const TextArea = ({ label, value, onChange, placeholder, rows=3 }) => (
+  <label className="block">
+    {label && <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">{label}</div>}
+    <textarea value={value == null ? '' : value} onChange={(e)=>onChange(e.target.value)} placeholder={placeholder} rows={rows}
+      className="w-full bg-black border border-[#1a1a1a] focus:border-[#d4ff00] outline-none px-3 py-3 text-white font-mono text-sm placeholder:text-[#444] resize-none" />
+  </label>
+);
+
+const Modal = ({ open, onClose, title, children, footer }) => {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center" onClick={onClose}>
+      <div onClick={(e)=>e.stopPropagation()} className="bg-black border-t sm:border border-[#222] w-full sm:max-w-md max-h-[92vh] flex flex-col safe-bottom">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1a1a1a]">
+          <h2 className="font-display text-xl tracking-wider truncate">{title}</h2>
+          <button onClick={onClose} className="text-[#888] hover:text-white p-1 flex-shrink-0"><X size={20} /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">{children}</div>
+        {footer && <div className="border-t border-[#1a1a1a] p-4 flex gap-2">{footer}</div>}
+      </div>
+    </div>
+  );
+};
+
+const Confirm = ({ open, title, message, onConfirm, onCancel, danger, confirmLabel = 'Confirmar' }) => (
+  <Modal open={open} onClose={onCancel} title={title}
+    footer={<>
+      <Btn variant="ghost" onClick={onCancel} full>Cancelar</Btn>
+      <Btn variant={danger?'danger':'primary'} onClick={onConfirm} full>{confirmLabel}</Btn>
+    </>}>
+    <p className="text-sm text-[#aaa] font-mono leading-relaxed">{message}</p>
+  </Modal>
+);
+
+const Toggle = ({ label, hint, value, onChange }) => (
+  <label className="flex items-center justify-between gap-3 cursor-pointer py-2">
+    <div className="flex-1 min-w-0">
+      {label && <div className="font-mono text-sm text-white">{label}</div>}
+      {hint && <div className="text-[10px] font-mono text-[#666] mt-1 leading-relaxed">{hint}</div>}
+    </div>
+    <button type="button" onClick={()=>onChange(!value)}
+      className={`flex-shrink-0 w-12 h-6 border transition-colors relative ${value?'bg-[#d4ff00] border-[#d4ff00]':'bg-black border-[#333]'}`}>
+      <div className={`absolute w-5 h-5 transition-all ${value?'bg-black':'bg-[#666]'}`} style={{ top: '2px', left: value? '24px':'2px' }} />
+    </button>
+  </label>
+);
+
+const ScaleSelector = ({ value, onChange, labels }) => (
+  <div>
+    <div className="grid grid-cols-5 gap-1.5">
+      {[1,2,3,4,5].map(n => {
+        const sel = value === n;
+        return (
+          <button key={n} type="button" onClick={()=>onChange(sel?null:n)}
+            className={`h-11 border font-display text-2xl transition-colors ${sel?'border-[#d4ff00] text-[#d4ff00] bg-[#d4ff00]/10':'border-[#1a1a1a] text-[#666] hover:border-[#333]'}`}>
+            {n}
+          </button>
+        );
+      })}
+    </div>
+    <div className="text-[10px] font-mono text-center mt-2 tracking-widest uppercase" style={{ color: value ? '#d4ff00' : '#444', minHeight: '12px' }}>
+      {value ? labels[value] : '—'}
+    </div>
+  </div>
+);
+
+const EmptyState = ({ icon:IconC, title, hint, action }) => (
+  <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+    <div className="w-16 h-16 border border-[#1a1a1a] flex items-center justify-center mb-4">
+      <IconC size={24} className="text-[#666]" strokeWidth={1.5} />
+    </div>
+    <h3 className="font-display text-2xl tracking-wider mb-2">{title}</h3>
+    <p className="text-sm text-[#666] font-mono mb-6 max-w-xs leading-relaxed">{hint}</p>
+    {action}
+  </div>
+);
+
+const Header = ({ title, subtitle, right, onBack }) => (
+  <div className="border-b border-[#1a1a1a] px-4 py-4 flex items-center gap-3 sticky top-0 bg-black z-30">
+    {onBack && <button onClick={onBack} className="text-white p-1 -ml-1"><ChevronLeft size={22} /></button>}
+    <div className="flex-1 min-w-0">
+      <h1 className="font-display text-2xl tracking-wider leading-none truncate">{title}</h1>
+      {subtitle && <p className="text-[10px] font-mono uppercase tracking-widest text-[#666] mt-1 truncate">{subtitle}</p>}
+    </div>
+    {right}
+  </div>
+);
+
+const Pill = ({ children, color }) => {
+  if (color) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[9px] font-mono uppercase tracking-widest px-2 py-1 border" style={{ borderColor: color+'66', color }}>
+        <span className="w-2 h-2" style={{ background: color }} />
+        {children}
+      </span>
+    );
+  }
+  return <span className="inline-block text-[9px] font-mono uppercase tracking-widest px-2 py-1 border border-[#222] text-[#888]">{children}</span>;
+};
+
+const useToast = () => {
+  const [msg, setMsg] = useState('');
+  const [variant, setVariant] = useState('info');
+  const show = (text, v='info') => { setMsg(text); setVariant(v); setTimeout(()=>setMsg(''), 3500); };
+  const colors = variant === 'error'
+    ? 'border-[#ff4757]/40 text-[#ff4757]'
+    : 'border-[#d4ff00]/40 text-[#d4ff00]';
+  const Toast = msg ? (
+    <div className={`fixed bottom-24 left-4 right-4 z-50 bg-[#0a0a0a] border ${colors} px-4 py-3 font-mono text-xs uppercase tracking-widest text-center`}>
+      {msg}
+    </div>
+  ) : null;
+  return { show, Toast };
+};
+
+/* EXERCISES */
+const ExercisesView = ({ data, setData }) => {
+  const [editing, setEditing] = useState(null);
+  const [filter, setFilter] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const startNew = () => setEditing({ id:null, name:'', muscle:'', type:'weight', notes:'' });
+
+  const save = (ex) => {
+    if (!ex.name.trim()) return;
+    setData(d => {
+      const list = [...d.exercises];
+      if (ex.id) { const i = list.findIndex(x => x.id === ex.id); if (i >= 0) list[i] = ex; }
+      else list.push({ ...ex, id: uid() });
+      list.sort((a,b) => a.name.localeCompare(b.name, 'pt-BR'));
+      return { ...d, exercises: list };
+    });
+    setEditing(null);
+  };
+  const remove = (id) => {
+    setData(d => ({ ...d, exercises: d.exercises.filter(e => e.id !== id) }));
+    setConfirmDelete(null); setEditing(null);
+  };
+  const filtered = useMemo(() => {
+    const f = filter.toLowerCase().trim();
+    if (!f) return data.exercises;
+    return data.exercises.filter(e => e.name.toLowerCase().includes(f) || (e.muscle||'').toLowerCase().includes(f));
+  }, [data.exercises, filter]);
+  const grouped = useMemo(() => {
+    const g = {};
+    filtered.forEach(e => { const m = e.muscle||'Sem grupo'; if (!g[m]) g[m]=[]; g[m].push(e); });
+    return Object.entries(g).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+  }, [filtered]);
+
+  return (
+    <div className="pb-24">
+      <Header title="Exercícios" subtitle={`${data.exercises.length} cadastrados`} right={<Btn icon={Plus} onClick={startNew} size="sm">Novo</Btn>} />
+      <div className="px-4 py-3 border-b border-[#1a1a1a]">
+        <Input value={filter} onChange={setFilter} placeholder="Buscar nome ou grupo muscular" />
+      </div>
+      {data.exercises.length === 0 ? (
+        <EmptyState icon={Dumbbell} title="Nenhum exercício"
+          hint="Cadastre os exercícios que você usa nos treinos."
+          action={<Btn icon={Plus} onClick={startNew}>Cadastrar primeiro</Btn>} />
+      ) : (
+        <div>
+          {grouped.map(([muscle, exs]) => {
+            const c = muscleColor(muscle);
+            return (
+              <div key={muscle} className="border-b border-[#0d0d0d]">
+                <div className="px-4 py-2 text-[10px] font-mono uppercase tracking-widest flex items-center gap-2" style={{ color: c, background: withAlpha(c, 0.08) }}>
+                  <span className="w-2 h-2" style={{ background: c }} />
+                  {muscle}
+                </div>
+                {exs.map(ex => (
+                  <button key={ex.id} onClick={()=>setEditing(ex)}
+                    className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#0a0a0a] transition-colors text-left border-b border-[#0d0d0d] last:border-b-0 border-l-4"
+                    style={{ borderLeftColor: c }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-sm text-white truncate">{ex.name}</div>
+                      <div className="flex gap-2 mt-1 flex-wrap">
+                        <Pill>{(EX_TYPES.find(t=>t.id===ex.type)||{}).label || ex.type}</Pill>
+                      </div>
+                    </div>
+                    <ChevronRight size={16} className="text-[#444]" />
+                  </button>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {editing && <ExerciseEditor exercise={editing} onSave={save} onCancel={()=>setEditing(null)} onDelete={editing.id?()=>setConfirmDelete(editing.id):null} />}
+      <Confirm open={!!confirmDelete} title="Excluir exercício?"
+        message="O exercício será removido. Treinos antigos manterão o registro."
+        onConfirm={()=>remove(confirmDelete)} onCancel={()=>setConfirmDelete(null)} danger />
+    </div>
+  );
+};
+
+const ExerciseEditor = ({ exercise, onSave, onCancel, onDelete }) => {
+  const [ex, setEx] = useState(exercise);
+  return (
+    <Modal open={true} onClose={onCancel} title={exercise.id?'Editar exercício':'Novo exercício'}
+      footer={<>
+        {onDelete && <Btn variant="danger" onClick={onDelete} icon={Trash2} size="md" />}
+        <Btn variant="ghost" onClick={onCancel} full>Cancelar</Btn>
+        <Btn variant="primary" onClick={()=>onSave(ex)} icon={Save} full>Salvar</Btn>
+      </>}>
+      <Input label="Nome" value={ex.name} onChange={v=>setEx({...ex, name:v})} placeholder="Ex: Supino reto" autoFocus />
+      <div>
+        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Grupo muscular</div>
+        <Input value={ex.muscle} onChange={v=>setEx({...ex, muscle:v})} placeholder="Ex: Peito" />
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {COMMON_MUSCLES.map(m => {
+            const c = muscleColor(m); const sel = ex.muscle === m;
+            return (
+              <button key={m} type="button" onClick={()=>setEx({...ex, muscle:m})}
+                className="text-[10px] font-mono uppercase tracking-wider px-2 py-1 border transition-colors flex items-center gap-1.5"
+                style={{ borderColor: sel ? c : '#1a1a1a', color: sel ? c : '#888', background: sel ? withAlpha(c, 0.1) : 'transparent' }}>
+                <span className="w-1.5 h-1.5" style={{ background: c }} />{m}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div>
+        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Tipo de exercício</div>
+        <div className="grid grid-cols-2 gap-2">
+          {EX_TYPES.map(t => {
+            const IconC = t.icon; const sel = ex.type === t.id;
+            return (
+              <button key={t.id} type="button" onClick={()=>setEx({...ex, type:t.id})}
+                className={`p-3 border flex flex-col items-center gap-2 transition-colors ${sel?'border-[#d4ff00] text-[#d4ff00]':'border-[#1a1a1a] text-[#888]'}`}>
+                <IconC size={18} strokeWidth={1.5} />
+                <span className="text-[9px] font-mono uppercase tracking-wider text-center leading-tight">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[10px] font-mono text-[#666] mt-2 leading-relaxed">
+          {(EX_TYPES.find(t=>t.id===ex.type)||{}).hint || ''}
+        </p>
+      </div>
+      <TextArea label="Observações fixas" value={ex.notes} onChange={v=>setEx({...ex, notes:v})}
+        placeholder="Aparece toda vez que você fizer este exercício." rows={4} />
+    </Modal>
+  );
+};
+
+/* WORKOUTS */
+const WorkoutsView = ({ data, onStart, onEdit }) => (
+  <div className="pb-24">
+    <Header title="Treinos" subtitle={`${data.workouts.length} modelos`}
+      right={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value})} size="sm">Novo</Btn>} />
+    {data.workouts.length === 0 ? (
+      <EmptyState icon={Activity} title="Nenhum treino"
+        hint="Crie modelos de treino combinando seus exercícios."
+        action={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value})}>Criar primeiro</Btn>} />
+    ) : (
+      <div className="divide-y divide-[#0d0d0d]">
+        {data.workouts.map(w => {
+          const lastSession = data.sessions.filter(s=>s.templateId===w.id).sort((a,b)=>b.date-a.date)[0];
+          const muscleCounts = {};
+          w.exercises.forEach(we => {
+            const ex = data.exercises.find(e=>e.id===we.exerciseId);
+            const m = (ex && ex.muscle) || 'Sem grupo';
+            muscleCounts[m] = (muscleCounts[m] || 0) + 1;
+          });
+          const muscleEntries = Object.entries(muscleCounts).sort((a,b)=>b[1]-a[1]);
+          const wColor = w.color || WORKOUT_COLORS[0].value;
+          return (
+            <div key={w.id} className="px-4 py-4 border-l-4" style={{ borderLeftColor: wColor }}>
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-display text-2xl tracking-wider leading-none" style={{ color: wColor }}>{w.name||'Sem nome'}</h3>
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mt-1.5">
+                    {w.exercises.length} exerc · {lastSession ? `Último: ${formatShort(lastSession.date)}` : 'Nunca executado'}
+                  </div>
+                </div>
+                <button onClick={()=>onEdit(w)} className="p-2 text-[#888] hover:text-white"><Edit3 size={16} /></button>
+              </div>
+              {muscleEntries.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {muscleEntries.map(([m, count]) => (
+                    <Pill key={m} color={muscleColor(m)}>{m} · {count}</Pill>
+                  ))}
+                </div>
+              )}
+              <Btn icon={Play} onClick={()=>onStart(w)} full disabled={w.exercises.length === 0}>Iniciar treino</Btn>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+);
+
+const WorkoutEditor = ({ workout, data, setData, onClose }) => {
+  const [w, setW] = useState({
+    color: WORKOUT_COLORS[0].value,
+    ...workout,
+    exercises: (workout.exercises||[]).map(we => normalizeTemplateExercise(we, data.exercises.find(e=>e.id===we.exerciseId)))
+  });
+  const [pickingEx, setPickingEx] = useState(false);
+  const [editingExIdx, setEditingExIdx] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const save = () => {
+    if (!w.name.trim()) return;
+    setData(d => {
+      const list = [...d.workouts];
+      if (w.id) { const i = list.findIndex(x=>x.id===w.id); if (i>=0) list[i] = w; }
+      else list.push({...w, id: uid()});
+      return { ...d, workouts: list };
+    });
+    onClose();
+  };
+  const remove = () => { setData(d => ({...d, workouts: d.workouts.filter(x=>x.id!==w.id)})); onClose(); };
+
+  const addExercise = (exerciseId) => {
+    const ex = data.exercises.find(e=>e.id===exerciseId);
+    if (!ex) return;
+    const targetSets = 3;
+    const setRefs = [];
+    for (let i = 0; i < targetSets; i++) {
+      if (ex.type === 'time') setRefs.push({ weight: '', reps: '', time: 30 });
+      else setRefs.push({ weight: '', reps: 10, time: '' });
+    }
+    const newItem = {
+      exerciseId,
+      targetSets,
+      targetRepsMin: ex.type === 'time' ? null : 8,
+      targetRepsMax: ex.type === 'time' ? null : 12,
+      setRefs,
+      notes: ''
+    };
+    setW(prev => ({...prev, exercises: [...prev.exercises, newItem]}));
+    setPickingEx(false);
+    setEditingExIdx(w.exercises.length);
+  };
+  const updateEx = (idx, patch) => setW(prev => ({...prev, exercises: prev.exercises.map((e,i)=>i===idx?{...e,...patch}:e)}));
+  const removeEx = (idx) => { setW(prev => ({...prev, exercises: prev.exercises.filter((_,i)=>i!==idx)})); setEditingExIdx(null); };
+  const moveEx = (idx, dir) => {
+    setW(prev => {
+      const arr = [...prev.exercises]; const ni = idx + dir;
+      if (ni < 0 || ni >= arr.length) return prev;
+      [arr[idx], arr[ni]] = [arr[ni], arr[idx]];
+      return {...prev, exercises: arr};
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-40 bg-black flex flex-col">
+      <Header title={workout.id?'Editar treino':'Novo treino'} onBack={onClose}
+        right={<Btn variant="primary" size="sm" onClick={save} icon={Save}>Salvar</Btn>} />
+      <div className="flex-1 overflow-y-auto pb-32">
+        <div className="p-4 space-y-4 border-b border-[#1a1a1a]">
+          <Input label="Nome" value={w.name} onChange={v=>setW({...w, name:v})} placeholder="Ex: Treino A — Push" />
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Cor do treino</div>
+            <div className="grid grid-cols-6 gap-2">
+              {WORKOUT_COLORS.map(c => {
+                const sel = w.color === c.value;
+                return (
+                  <button key={c.id} type="button" onClick={()=>setW({...w, color: c.value})}
+                    title={c.label}
+                    className="h-10 border transition-all relative"
+                    style={{ background: c.value, borderColor: sel ? '#fff' : 'transparent', borderWidth: sel ? 2 : 1 }}>
+                    {sel && <Check size={14} strokeWidth={3} className="text-black absolute" style={{top:'50%', left:'50%', transform:'translate(-50%,-50%)'}} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          <TextArea label="Observações gerais" value={w.notes} onChange={v=>setW({...w, notes:v})} placeholder="Notas para lembrar a cada treino" rows={3} />
+        </div>
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-[#666]">Exercícios ({w.exercises.length})</div>
+          <Btn icon={Plus} onClick={()=>setPickingEx(true)} size="sm" variant="ghost">Adicionar</Btn>
+        </div>
+        {w.exercises.length === 0 ? (
+          <div className="px-4 py-8 text-center text-[#666] font-mono text-xs">Nenhum exercício. Toque em ADICIONAR.</div>
+        ) : (
+          <div className="divide-y divide-[#0d0d0d]">
+            {w.exercises.map((we, idx) => {
+              const ex = data.exercises.find(e=>e.id===we.exerciseId);
+              const c = muscleColor(ex && ex.muscle);
+              const refsCount = (we.setRefs||[]).length;
+              return (
+                <div key={idx} className="px-4 py-3 flex items-center gap-3 border-l-4" style={{ borderLeftColor: c, background: withAlpha(c, 0.04) }}>
+                  <div className="flex flex-col gap-0.5">
+                    <button onClick={()=>moveEx(idx,-1)} disabled={idx===0} className="text-[#666] disabled:opacity-30 p-1"><ArrowUp size={12} /></button>
+                    <button onClick={()=>moveEx(idx, 1)} disabled={idx===w.exercises.length-1} className="text-[#666] disabled:opacity-30 p-1"><ArrowDown size={12} /></button>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-sm text-white truncate">{ex ? ex.name : '? Exercício removido'}</div>
+                    <div className="text-[10px] font-mono text-[#666] mt-0.5">
+                      {refsCount}× {ex && ex.type==='time'
+                        ? ((we.setRefs||[]).map(s => s.time||'?').join('/') + 's')
+                        : `${we.targetRepsMin || '?'}-${we.targetRepsMax || '?'} reps`}
+                    </div>
+                  </div>
+                  <button onClick={()=>setEditingExIdx(idx)} className="text-[#888] hover:text-white p-2"><Edit3 size={14} /></button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {workout.id && (
+          <div className="p-4 mt-6">
+            <Btn variant="danger" onClick={()=>setConfirmDelete(true)} icon={Trash2} full>Excluir treino</Btn>
+          </div>
+        )}
+      </div>
+      {pickingEx && <ExercisePicker exercises={data.exercises} onPick={addExercise} onClose={()=>setPickingEx(false)} />}
+      {editingExIdx !== null && w.exercises[editingExIdx] && (
+        <WorkoutExerciseEditor
+          item={w.exercises[editingExIdx]}
+          exercise={data.exercises.find(e=>e.id===w.exercises[editingExIdx].exerciseId)}
+          onSave={(patch)=>{updateEx(editingExIdx, patch); setEditingExIdx(null);}}
+          onCancel={()=>setEditingExIdx(null)}
+          onRemove={()=>removeEx(editingExIdx)} />
+      )}
+      <Confirm open={confirmDelete} title="Excluir treino?"
+        message="O modelo será removido. Treinos já realizados ficam no histórico."
+        onConfirm={remove} onCancel={()=>setConfirmDelete(false)} danger />
+    </div>
+  );
+};
+
+const ExercisePicker = ({ exercises, onPick, onClose, title = 'Adicionar exercício' }) => {
+  const [filter, setFilter] = useState('');
+  const filtered = exercises.filter(e => !filter || e.name.toLowerCase().includes(filter.toLowerCase()) || (e.muscle||'').toLowerCase().includes(filter.toLowerCase()));
+  return (
+    <Modal open={true} onClose={onClose} title={title}>
+      <Input value={filter} onChange={setFilter} placeholder="Buscar..." autoFocus />
+      {exercises.length === 0 ? (
+        <p className="text-sm text-[#666] font-mono text-center py-6">Cadastre exercícios em EXERCÍCIOS antes.</p>
+      ) : (
+        <div className="space-y-1 -mx-4">
+          {filtered.map(ex => {
+            const c = muscleColor(ex.muscle);
+            return (
+              <button key={ex.id} onClick={()=>onPick(ex.id)} className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#0a0a0a] text-left border-l-4" style={{ borderLeftColor: c, background: withAlpha(c, 0.05) }}>
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono text-sm text-white truncate">{ex.name}</div>
+                  <div className="text-[10px] font-mono mt-0.5" style={{ color: c }}>{ex.muscle||'—'}</div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) => {
+  const [it, setIt] = useState(() => normalizeTemplateExercise(item, exercise));
+  const isTime = exercise && exercise.type === 'time';
+
+  const updateTargetSets = (n) => {
+    const next = Math.max(1, parseInt(n)||1);
+    const refs = [...(it.setRefs || [])];
+    while (refs.length < next) {
+      const last = refs[refs.length-1] || (isTime ? {weight:'', reps:'', time:30} : {weight:'', reps:10, time:''});
+      refs.push({ ...last });
+    }
+    refs.length = next;
+    setIt({ ...it, targetSets: next, setRefs: refs });
+  };
+
+  const updateRef = (i, patch) => {
+    setIt({ ...it, setRefs: it.setRefs.map((r,j)=>j===i?{...r,...patch}:r) });
+  };
+
+  return (
+    <Modal open={true} onClose={onCancel} title={(exercise && exercise.name)||'Configurar'}
+      footer={<>
+        <Btn variant="danger" onClick={onRemove} icon={Trash2} size="md" />
+        <Btn variant="ghost" onClick={onCancel} full>Cancelar</Btn>
+        <Btn variant="primary" onClick={()=>onSave(it)} full>OK</Btn>
+      </>}>
+      <Input label="Número de séries" type="number" inputMode="numeric" value={it.targetSets}
+        onChange={updateTargetSets} min={1} />
+
+      {!isTime && (
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Faixa reps mín" type="number" inputMode="numeric" value={it.targetRepsMin}
+            onChange={v=>setIt({...it, targetRepsMin: v===''? '' : (parseInt(v)||0)})} />
+          <Input label="Faixa reps máx" type="number" inputMode="numeric" value={it.targetRepsMax}
+            onChange={v=>setIt({...it, targetRepsMax: v===''? '' : (parseInt(v)||0)})} />
+        </div>
+      )}
+
+      <div>
+        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">
+          Cargas e {isTime ? 'tempos' : 'repetições'} de referência por série
+        </div>
+        <p className="text-[10px] font-mono text-[#666] mb-3 leading-relaxed">
+          Estes valores são pré-preenchidos no início do treino.
+        </p>
+        <table className="set-table">
+          <thead>
+            <tr>
+              <th className="col-num">#</th>
+              {isTime ? (<><th>Carga</th><th>Tempo</th></>) : (<><th>Carga</th><th>Reps</th></>)}
+            </tr>
+          </thead>
+          <tbody>
+            {(it.setRefs||[]).map((r,i)=>(
+              <tr key={i}>
+                <td className="col-num">{i+1}</td>
+                {isTime ? (
+                  <>
+                    <td><input type="number" inputMode="decimal" step="0.5" className="cell-input" value={r.weight==null?'':r.weight}
+                      onFocus={(e)=>e.target.select()}
+                      onChange={(e)=>updateRef(i, {weight: e.target.value === '' ? '' : (parseFloat(e.target.value)||0)})} /></td>
+                    <td><input type="number" inputMode="numeric" className="cell-input" value={r.time==null?'':r.time}
+                      onFocus={(e)=>e.target.select()}
+                      onChange={(e)=>updateRef(i, {time: e.target.value === '' ? '' : (parseInt(e.target.value)||0)})} /></td>
+                  </>
+                ) : (
+                  <>
+                    <td><input type="number" inputMode="decimal" step="0.5" className="cell-input" value={r.weight==null?'':r.weight}
+                      onFocus={(e)=>e.target.select()}
+                      onChange={(e)=>updateRef(i, {weight: e.target.value === '' ? '' : (parseFloat(e.target.value)||0)})} /></td>
+                    <td><input type="number" inputMode="numeric" className="cell-input" value={r.reps==null?'':r.reps}
+                      onFocus={(e)=>e.target.select()}
+                      onChange={(e)=>updateRef(i, {reps: e.target.value === '' ? '' : (parseInt(e.target.value)||0)})} /></td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <TextArea label="Observações deste exercício no treino" value={it.notes} onChange={v=>setIt({...it, notes:v})}
+        placeholder="Ex: começar com aquecimento de 50%" rows={2} />
+    </Modal>
+  );
+};
+
+const buildInitialSets = (exDef, exTemplateItem) => {
+  const it = normalizeTemplateExercise(exTemplateItem, exDef);
+  const refs = it.setRefs || [];
+  return refs.map(r => ({
+    completed: false,
+    weight: r.weight == null ? '' : r.weight,
+    reps: r.reps == null ? '' : r.reps,
+    time: r.time == null ? '' : r.time,
+  }));
+};
+
+/* ACTIVE WORKOUT */
+const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
+  const [showSummary, setShowSummary] = useState(false);
+  const [showWorkoutNotes, setShowWorkoutNotes] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
+  const [confirmIncomplete, setConfirmIncomplete] = useState(false);
+  const [addingEx, setAddingEx] = useState(false);
+  const [substitutingIdx, setSubstitutingIdx] = useState(null);
+  const [confirmRemoveIdx, setConfirmRemoveIdx] = useState(null);
+  const [historyExId, setHistoryExId] = useState(null);
+  const [collapsed, setCollapsed] = useState(() => loadLS(COLLAPSED_KEY, {}));
+
+  // Salva o estado de collapse por exercício/sessão
+  useEffect(() => { saveLS(COLLAPSED_KEY, collapsed); }, [collapsed]);
+
+  useEffect(() => {
+    const t = setInterval(() => setActive(prev => prev ? {...prev, elapsed: Date.now() - prev.startedAt} : prev), 1000);
+    return () => clearInterval(t);
+  }, [setActive]);
+
+  const updateExLog = (idx, patch) => setActive(prev => ({
+    ...prev,
+    exercises: prev.exercises.map((e,i)=>i===idx?{...e,...patch}:e)
+  }));
+
+  const updateSet = (idx, si, patch) => {
+    setActive(prev => ({
+      ...prev,
+      exercises: prev.exercises.map((e,i) => {
+        if (i !== idx) return e;
+        const newSets = (e.sets||[]).map((s,j) => {
+          if (j !== si) return s;
+          const merged = { ...s, ...patch };
+          const exDef = data.exercises.find(d=>d.id===e.exerciseId);
+          if (exDef && exDef.type === 'weight') {
+            merged.oneRM = calc1RM(merged.weight, merged.reps);
+          }
+          return merged;
+        });
+        return { ...e, sets: newSets };
+      })
+    }));
+  };
+
+  const toggleSetCompleted = (idx, si) => {
+    const exLog = active.exercises[idx];
+    const set = (exLog.sets||[])[si];
+    if (!set) return;
+    const exDef = data.exercises.find(d=>d.id===exLog.exerciseId);
+    if (set.completed) {
+      updateSet(idx, si, { completed: false });
+    } else {
+      const w = parseFloat(set.weight);
+      const r = parseInt(set.reps);
+      const t = parseInt(set.time);
+      if (exDef.type === 'time' && (!t || t <= 0)) return;
+      if (exDef.type === 'weight' && (isNaN(r) || r <= 0)) return;
+      const oneRM = exDef.type === 'weight' ? calc1RM(set.weight, set.reps) : 0;
+      updateSet(idx, si, { completed: true, oneRM, timestamp: Date.now() });
+      try{ navigator.vibrate && navigator.vibrate(80); } catch(e){}
+    }
+  };
+
+  const addSetRow = (idx) => {
+    const exLog = active.exercises[idx];
+    const sets = exLog.sets || [];
+    const last = sets[sets.length-1];
+    const newSet = last
+      ? { ...last, completed: false, oneRM: undefined, timestamp: undefined }
+      : { completed: false, weight:'', reps:'', time:'' };
+    updateExLog(idx, { sets: [...sets, newSet] });
+  };
+
+  const removeSetRow = (idx, si) => {
+    const exLog = active.exercises[idx];
+    updateExLog(idx, { sets: (exLog.sets||[]).filter((_,i)=>i!==si) });
+  };
+
+  const addExerciseToActive = (exerciseId) => {
+    const ex = data.exercises.find(e=>e.id===exerciseId);
+    if (!ex) return;
+    const targetSets = 3;
+    const setRefs = [];
+    for (let i = 0; i < targetSets; i++) {
+      if (ex.type === 'time') setRefs.push({ weight:'', reps:'', time: 30 });
+      else setRefs.push({ weight:'', reps: 10, time: '' });
+    }
+    const tplItem = {
+      exerciseId, targetSets,
+      targetRepsMin: ex.type === 'time' ? null : 8,
+      targetRepsMax: ex.type === 'time' ? null : 12,
+      setRefs,
+    };
+    const newItem = { ...tplItem, notes:'', sessionNote:'', sets: buildInitialSets(ex, tplItem) };
+    setActive(prev => ({ ...prev, exercises: [...prev.exercises, newItem] }));
+    setAddingEx(false);
+  };
+
+  const substituteExercise = (newExerciseId) => {
+    const newDef = data.exercises.find(e=>e.id===newExerciseId);
+    if (!newDef) return;
+    const idx = substitutingIdx;
+    setActive(prev => {
+      const old = prev.exercises[idx];
+      const targetSets = old.targetSets || 3;
+      const setRefs = [];
+      for (let i = 0; i < targetSets; i++) {
+        if (newDef.type === 'time') setRefs.push({ weight:'', reps:'', time: 30 });
+        else setRefs.push({ weight:'', reps: 10, time: '' });
+      }
+      const tplItem = {
+        exerciseId: newExerciseId, targetSets,
+        targetRepsMin: newDef.type === 'time' ? null : (old.targetRepsMin || 8),
+        targetRepsMax: newDef.type === 'time' ? null : (old.targetRepsMax || 12),
+        setRefs,
+      };
+      const replaced = { ...tplItem, notes: old.notes||'', sessionNote: old.sessionNote||'', sets: buildInitialSets(newDef, tplItem) };
+      return { ...prev, exercises: prev.exercises.map((e,i)=>i===idx?replaced:e) };
+    });
+    setSubstitutingIdx(null);
+  };
+
+  const removeExercise = (idx) => {
+    setActive(prev => ({ ...prev, exercises: prev.exercises.filter((_,i)=>i!==idx) }));
+    setConfirmRemoveIdx(null);
+  };
+
+  const finish = (refUpdates, extras) => {
+    const session = {
+      ...active,
+      finishedAt: Date.now(),
+      duration: Date.now() - active.startedAt,
+      disposition: extras && extras.disposition != null ? extras.disposition : null,
+      intensity: extras && extras.intensity != null ? extras.intensity : null,
+    };
+    setData(d => {
+      let workouts = d.workouts;
+      if (refUpdates && session.templateId && Object.keys(refUpdates).length) {
+        workouts = d.workouts.map(w => {
+          if (w.id !== session.templateId) return w;
+          const updatedExs = w.exercises.map(we => {
+            const upd = refUpdates[we.exerciseId];
+            if (!upd) return we;
+            const next = { ...we };
+            if (upd.setRefs) next.setRefs = upd.setRefs;
+            if (upd.targetRepsMin != null) next.targetRepsMin = upd.targetRepsMin;
+            if (upd.targetRepsMax != null) next.targetRepsMax = upd.targetRepsMax;
+            return next;
+          });
+          return { ...w, exercises: updatedExs };
+        });
+      }
+      return { ...d, sessions: [session, ...d.sessions], workouts };
+    });
+    setActive(null);
+    onFinish(session);
+  };
+
+  // verifica se há séries pendentes (alvo - completas > 0) em qualquer exercício
+  const hasIncomplete = useMemo(() => {
+    return active.exercises.some(e => {
+      const target = e.targetSets || 0;
+      const done = (e.sets||[]).filter(s=>s.completed).length;
+      return done < target;
+    });
+  }, [active.exercises]);
+
+  const tryFinish = () => {
+    if (hasIncomplete) {
+      setConfirmIncomplete(true);
+    } else {
+      setShowSummary(true);
+    }
+  };
+
+  const totalEx = active.exercises.length;
+  const doneCount = active.exercises.filter(e=>(e.sets||[]).every(s=>s.completed) && (e.sets||[]).length > 0).length;
+  const elapsed = Math.floor((active.elapsed||0)/1000);
+
+  const toggleCollapse = (key) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+
+  return (
+    <div className="fixed inset-0 z-40 bg-black flex flex-col">
+      <div className="border-b border-[#1a1a1a] px-4 py-3 sticky top-0 bg-black z-30">
+        <div className="flex items-center justify-between">
+          <button onClick={()=>setConfirmExit(true)} className="text-[#888] p-1 -ml-1"><X size={20} /></button>
+          <div className="text-center flex-1 min-w-0 mx-2">
+            <div className="font-display text-lg tracking-wider leading-none truncate">{active.templateName}</div>
+            <div className="text-[10px] font-mono text-[#666] tracking-widest mt-0.5">{formatTime(elapsed)} · {doneCount}/{totalEx}</div>
+          </div>
+          <button onClick={tryFinish} className="text-[#d4ff00] p-1"><Check size={22} /></button>
+        </div>
+      </div>
+
+      {active.notes && (
+        <button onClick={()=>setShowWorkoutNotes(true)} className="border-b border-[#1a1a1a] px-4 py-2 flex items-center gap-2 text-[#d4ff00] hover:bg-[#0a0a0a]">
+          <Edit3 size={14} />
+          <span className="text-[10px] font-mono uppercase tracking-widest truncate text-left">Notas do treino · toque para abrir</span>
+        </button>
+      )}
+
+      <div className="flex-1 overflow-y-auto safe-bottom-pad">
+        {active.exercises.map((exLog, idx) => {
+          const exDef = data.exercises.find(e=>e.id===exLog.exerciseId);
+          const key = `${active.id}-${idx}`;
+          return (
+            <ExerciseBlock
+              key={key}
+              idx={idx}
+              exLog={exLog}
+              exDef={exDef}
+              isCollapsed={!!collapsed[key]}
+              onToggleCollapse={()=>toggleCollapse(key)}
+              onUpdateSet={(si, patch)=>updateSet(idx, si, patch)}
+              onToggleSet={(si)=>toggleSetCompleted(idx, si)}
+              onAddSet={()=>addSetRow(idx)}
+              onRemoveSet={(si)=>removeSetRow(idx, si)}
+              onUpdateLog={(patch)=>updateExLog(idx, patch)}
+              onSubstitute={()=>setSubstitutingIdx(idx)}
+              onRemove={()=>setConfirmRemoveIdx(idx)}
+              onShowHistory={()=>setHistoryExId(exLog.exerciseId)}
+            />
+          );
+        })}
+
+        <div className="p-4 flex gap-2">
+          <Btn variant="ghost" full icon={Plus} onClick={()=>setAddingEx(true)}>Adicionar exercício</Btn>
+        </div>
+      </div>
+
+      <div className="border-t border-[#1a1a1a] bg-black px-4 py-3 fixed bottom-0 left-0 right-0 safe-bottom">
+        <Btn variant="primary" onClick={tryFinish} full size="lg" icon={Check}>Finalizar treino</Btn>
+      </div>
+
+      <Modal open={showWorkoutNotes} onClose={()=>setShowWorkoutNotes(false)} title="Notas do treino"
+        footer={<Btn onClick={()=>setShowWorkoutNotes(false)} full>Fechar</Btn>}>
+        {active.notes && (
+          <div className="bg-[#0a0a0a] border-l-2 border-[#d4ff00] px-3 py-3">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00] mb-2">Observações fixas</div>
+            <p className="text-sm font-mono text-white whitespace-pre-wrap leading-relaxed">{active.notes}</p>
+          </div>
+        )}
+        <TextArea label="Anotação geral deste treino (hoje)" value={active.sessionNote||''}
+          onChange={v=>setActive({...active, sessionNote:v})}
+          placeholder="Ex: 'dormi pouco', 'sem cafeína', 'pump bom'..." rows={4} />
+      </Modal>
+
+      {showSummary && <SummaryModal active={active} data={data} onConfirm={finish} onCancel={()=>setShowSummary(false)} onUpdateActive={setActive} />}
+
+      {addingEx && <ExercisePicker exercises={data.exercises} title="Adicionar exercício" onPick={addExerciseToActive} onClose={()=>setAddingEx(false)} />}
+      {substitutingIdx !== null && <ExercisePicker exercises={data.exercises} title="Substituir por..." onPick={substituteExercise} onClose={()=>setSubstitutingIdx(null)} />}
+      {historyExId && <ExerciseHistoryModal exerciseId={historyExId} data={data} onClose={()=>setHistoryExId(null)} />}
+
+      <Confirm open={confirmRemoveIdx !== null} title="Remover exercício?"
+        message="O exercício será removido deste treino. As séries já registradas nele serão perdidas."
+        onConfirm={()=>removeExercise(confirmRemoveIdx)} onCancel={()=>setConfirmRemoveIdx(null)} danger />
+
+      <Confirm open={confirmIncomplete} title="Finalizar com séries pendentes?"
+        message="Existem séries não marcadas como concluídas. Você quer finalizar o treino mesmo assim? As séries não marcadas não serão registradas."
+        onConfirm={()=>{ setConfirmIncomplete(false); setShowSummary(true); }}
+        onCancel={()=>setConfirmIncomplete(false)}
+        confirmLabel="Finalizar mesmo assim" />
+
+      <Confirm open={confirmExit} title="Sair do treino?"
+        message="O treino em andamento será descartado e não vai pro histórico."
+        onConfirm={()=>{setActive(null); onFinish(null);}} onCancel={()=>setConfirmExit(false)} danger />
+    </div>
+  );
+};
+
+const ExerciseBlock = ({ idx, exLog, exDef, isCollapsed, onToggleCollapse, onUpdateSet, onToggleSet, onAddSet, onRemoveSet, onUpdateLog, onSubstitute, onRemove, onShowHistory }) => {
+  const [showActions, setShowActions] = useState(false);
+  const [showNotes, setShowNotes] = useState(false);
+
+  if (!exDef) {
+    return (
+      <div className="border-b border-[#1a1a1a] p-4">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-mono text-[#ff4757]">? Exercício removido do cadastro</div>
+          <button onClick={onRemove} className="text-[#ff4757] p-1"><Trash2 size={14} /></button>
+        </div>
+      </div>
+    );
+  }
+
+  const sets = exLog.sets || [];
+  const setsDone = sets.filter(s=>s.completed).length;
+  const target = exLog.targetSets || sets.length;
+  const isDone = target > 0 && setsDone >= target;
+  const c = muscleColor(exDef.muscle);
+  const isTime = exDef.type === 'time';
+  const repsRange = (exLog.targetRepsMin && exLog.targetRepsMax) ? `${exLog.targetRepsMin}-${exLog.targetRepsMax}` : null;
+
+  // resumo curto pra mostrar quando colapsado
+  const summary = (() => {
+    if (sets.length === 0) return '—';
+    const refs = sets.slice(0, target);
+    if (isTime) return refs.map(s => `${s.time||'?'}s`).join(' · ');
+    return refs.map(s => `${s.weight===''?'?':s.weight}×${s.reps===''?'?':s.reps}`).join(' · ');
+  })();
+
+  return (
+    <div className="border-b border-[#1a1a1a]">
+      <div className={`px-4 py-3 border-l-4 ${isDone?'bg-[#0a0a0a]':''}`}
+        style={{ borderLeftColor: c, background: isDone ? '#0a0a0a' : withAlpha(c, 0.06) }}>
+        <div className="flex items-start gap-3">
+          <button onClick={onToggleCollapse} className="text-[#888] hover:text-white p-1 flex-shrink-0 mt-0.5">
+            {isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+          </button>
+          <div className="flex-1 min-w-0" onClick={onToggleCollapse} style={{cursor:'pointer'}}>
+            <div className="text-[10px] font-mono uppercase tracking-widest mb-0.5 flex items-center gap-1.5" style={{ color: c }}>
+              <span>{idx+1}.</span>
+              <span>{exDef.muscle||'—'}</span>
+            </div>
+            <h2 className="font-display text-xl tracking-wider leading-tight break-words">{exDef.name}</h2>
+            <div className="flex gap-2 mt-1.5 flex-wrap">
+              <Pill color={c}>
+                {target} séries
+                {!isTime && repsRange && ` · ${repsRange} reps`}
+              </Pill>
+              {setsDone > 0 && <Pill color={isDone ? '#84cc16' : c}>{setsDone}/{target} ✓</Pill>}
+            </div>
+            {isCollapsed && (
+              <div className="text-[10px] font-mono text-[#888] mt-1.5 truncate">{summary}</div>
+            )}
+          </div>
+          <button onClick={()=>setShowActions(true)} className="text-[#888] hover:text-white p-1 flex-shrink-0">
+            <Settings size={16} />
+          </button>
+        </div>
+
+        {!isCollapsed && (exDef.notes || exLog.notes) && (
+          <button onClick={()=>setShowNotes(true)} className="mt-3 w-full bg-[#0a0a0a] border-l-2 border-[#d4ff00] px-3 py-2 text-left">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00] mb-1">Observações · toque</div>
+            <p className="text-[11px] font-mono text-[#aaa] leading-relaxed truncate">{exDef.notes || exLog.notes}</p>
+          </button>
+        )}
+      </div>
+
+      {!isCollapsed && (
+        <>
+          <table className="set-table">
+            <thead>
+              <tr>
+                <th className="col-num">#</th>
+                {isTime ? (
+                  <>
+                    <th>Carga</th>
+                    <th>Tempo</th>
+                  </>
+                ) : (
+                  <>
+                    <th>Carga</th>
+                    <th>Reps{repsRange && <span className="ml-1 text-[#888] normal-case tracking-normal">({repsRange})</span>}</th>
+                    <th>1RM</th>
+                  </>
+                )}
+                <th className="col-check">Feita</th>
+                <th className="col-action"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {sets.map((s, si) => (
+                <SetRow key={si} si={si} set={s} exDef={exDef}
+                  onUpdate={(patch)=>onUpdateSet(si, patch)}
+                  onToggle={()=>onToggleSet(si)}
+                  onRemove={()=>onRemoveSet(si)} />
+              ))}
+            </tbody>
+          </table>
+
+          <div className="px-4 py-2 border-b border-[#0d0d0d] bg-[#050505]">
+            <button onClick={onAddSet}
+              className="w-full py-2 text-[10px] font-mono uppercase tracking-widest text-[#666] border border-dashed border-[#1a1a1a] hover:border-[#333] hover:text-[#888] transition-colors flex items-center justify-center gap-1.5">
+              <Plus size={12} /> Adicionar série extra
+            </button>
+          </div>
+        </>
+      )}
+
+      <Modal open={showActions} onClose={()=>setShowActions(false)} title={exDef.name}
+        footer={<Btn variant="ghost" onClick={()=>setShowActions(false)} full>Fechar</Btn>}>
+        <button onClick={()=>{ setShowActions(false); onShowHistory(); }}
+          className="w-full px-3 py-3 border border-[#1a1a1a] hover:border-[#333] text-left flex items-center gap-3">
+          <HistoryIcon size={16} className="text-[#d4ff00]" />
+          <div>
+            <div className="font-mono text-sm text-white">Ver histórico deste exercício</div>
+            <div className="text-[10px] font-mono text-[#666] mt-0.5">Últimas séries, treinos e datas</div>
+          </div>
+        </button>
+        <button onClick={()=>{ setShowActions(false); onSubstitute(); }}
+          className="w-full px-3 py-3 border border-[#1a1a1a] hover:border-[#333] text-left flex items-center gap-3">
+          <Repeat size={16} className="text-[#d4ff00]" />
+          <div>
+            <div className="font-mono text-sm text-white">Substituir exercício</div>
+            <div className="text-[10px] font-mono text-[#666] mt-0.5">Trocar por outro mantendo séries</div>
+          </div>
+        </button>
+        <button onClick={()=>{ setShowActions(false); onRemove(); }}
+          className="w-full px-3 py-3 border border-[#ff4757]/30 hover:bg-[#ff4757]/10 text-left flex items-center gap-3">
+          <Trash2 size={16} className="text-[#ff4757]" />
+          <div>
+            <div className="font-mono text-sm text-[#ff4757]">Remover do treino</div>
+            <div className="text-[10px] font-mono text-[#666] mt-0.5">Tira este exercício do treino atual</div>
+          </div>
+        </button>
+        <div className="pt-2">
+          <TextArea label="Anotação rápida deste exercício hoje"
+            value={exLog.sessionNote||''} onChange={v=>onUpdateLog({sessionNote:v})}
+            placeholder="Ex: 'última série caiu muito', 'ombro incomodando'..." rows={3} />
+        </div>
+      </Modal>
+
+      <Modal open={showNotes} onClose={()=>setShowNotes(false)} title="Observações"
+        footer={<Btn onClick={()=>setShowNotes(false)} full>Fechar</Btn>}>
+        {exDef.notes && (
+          <div className="bg-[#0a0a0a] border-l-2 border-[#d4ff00] px-3 py-3">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00] mb-2">Observação fixa</div>
+            <p className="text-sm font-mono text-white whitespace-pre-wrap leading-relaxed">{exDef.notes}</p>
+          </div>
+        )}
+        {exLog.notes && (
+          <div className="bg-[#0a0a0a] border-l-2 border-[#666] px-3 py-3">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#888] mb-2">Observação do treino</div>
+            <p className="text-sm font-mono text-white whitespace-pre-wrap leading-relaxed">{exLog.notes}</p>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
+  const onCellChange = (field, str) => {
+    if (str === '') { onUpdate({ [field]: '' }); return; }
+    if (field === 'reps' || field === 'time') {
+      const n = parseInt(str);
+      onUpdate({ [field]: isNaN(n) ? '' : n });
+    } else {
+      const n = parseFloat(str);
+      onUpdate({ [field]: isNaN(n) ? '' : n });
+    }
+  };
+  const completed = !!set.completed;
+  const oneRM = exDef.type === 'weight' && set.weight !== '' && set.reps !== '' ? calc1RM(set.weight, set.reps) : 0;
+  const isTime = exDef.type === 'time';
+
+  const cellInput = (val, field, step='1') => (
+    <input
+      type="number"
+      inputMode="decimal"
+      step={step}
+      min="0"
+      value={val === '' || val == null ? '' : val}
+      onChange={(e)=>onCellChange(field, e.target.value)}
+      onFocus={(e)=>e.target.select()}
+      placeholder="—"
+      disabled={completed}
+      className="cell-input"
+    />
+  );
+
+  return (
+    <tr className={completed ? 'completed' : ''}>
+      <td className="col-num">{si+1}</td>
+      {isTime ? (
+        <>
+          <td>{cellInput(set.weight, 'weight', '0.5')}</td>
+          <td>{cellInput(set.time, 'time', '1')}</td>
+        </>
+      ) : (
+        <>
+          <td>{cellInput(set.weight, 'weight', '0.5')}</td>
+          <td>{cellInput(set.reps, 'reps', '1')}</td>
+          <td className="cell-1rm">{oneRM > 0 ? oneRM : '—'}</td>
+        </>
+      )}
+      <td className="col-check">
+        <CompletedCheckbox checked={completed} onChange={onToggle} />
+      </td>
+      <td className="col-action">
+        <button onClick={onRemove} className="text-[#444] hover:text-[#ff4757] p-1" style={{display:'inline-flex'}}><X size={14} /></button>
+      </td>
+    </tr>
+  );
+};
+
+const CompletedCheckbox = ({ checked, onChange }) => (
+  <button type="button" onClick={onChange}
+    className={`w-7 h-7 border transition-colors ${checked?'bg-[#d4ff00] border-[#d4ff00]':'bg-black border-[#333] hover:border-[#666]'}`}
+    style={{display:'inline-flex', alignItems:'center', justifyContent:'center'}}>
+    {checked && <Check size={16} strokeWidth={3} className="text-black" />}
+  </button>
+);
+
+const ExerciseHistoryModal = ({ exerciseId, data, onClose }) => {
+  const exDef = data.exercises.find(e=>e.id===exerciseId);
+  const sessions = data.sessions
+    .map(s => {
+      const log = s.exercises.find(e => e.exerciseId === exerciseId);
+      const sets = log ? (log.sets||[]).filter(x=>x.completed) : [];
+      if (!sets.length) return null;
+      return { session: s, sets, sessionNote: log.sessionNote };
+    })
+    .filter(Boolean)
+    .slice(0, 8);
+
+  return (
+    <Modal open={true} onClose={onClose} title={(exDef && exDef.name) || 'Histórico'}
+      footer={<Btn onClick={onClose} full>Fechar</Btn>}>
+      {sessions.length === 0 ? (
+        <p className="text-sm text-[#666] font-mono text-center py-6">Sem histórico para este exercício ainda.</p>
+      ) : (
+        <div className="space-y-3">
+          {sessions.map((entry, i) => {
+            const { session, sets, sessionNote } = entry;
+            const max1RM = exDef && exDef.type === 'weight' ? Math.max(...sets.map(s=>s.oneRM||0)) : 0;
+            return (
+              <div key={i} className="border border-[#1a1a1a] p-3">
+                <div className="flex items-baseline justify-between mb-0.5 gap-2">
+                  <div className="font-display text-base tracking-wider truncate">{session.templateName || 'Treino livre'}</div>
+                  {max1RM > 0 && <div className="text-[10px] font-mono text-[#d4ff00] flex-shrink-0">1RM {max1RM}kg</div>}
+                </div>
+                <div className="text-[10px] font-mono text-[#666] tracking-widest mb-2">{formatDateTime(session.date)}</div>
+                <div className="space-y-0.5">
+                  {sets.map((s, si) => (
+                    <div key={si} className="flex items-center gap-3 text-xs font-mono">
+                      <span className="text-[#666] w-5">{si+1}</span>
+                      {exDef && exDef.type==='time' ? (
+                        <span className="text-white">{s.weight?`${s.weight}kg · `:''}{s.time}s</span>
+                      ) : (
+                        <>
+                          <span className="text-white">{s.weight}kg × {s.reps}</span>
+                          {s.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {s.oneRM}kg</span>}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {sessionNote && (
+                  <div className="text-[10px] font-mono text-[#888] mt-2 leading-relaxed border-l-2 border-[#1a1a1a] pl-2">{sessionNote}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+const SummaryModal = ({ active, data, onConfirm, onCancel, onUpdateActive }) => {
+  const [disposition, setDisposition] = useState(active.disposition || null);
+  const [intensity, setIntensity] = useState(active.intensity || null);
+
+  const initialDiff = useMemo(() => {
+    if (!active.templateId) return null;
+    const tpl = data.workouts.find(w=>w.id===active.templateId);
+    if (!tpl) return null;
+    const out = [];
+    active.exercises.forEach(e => {
+      const def = data.exercises.find(d=>d.id===e.exerciseId);
+      const tplEx = tpl.exercises.find(t => t.exerciseId === e.exerciseId);
+      if (!def || !tplEx) return;
+      const tplNorm = normalizeTemplateExercise(tplEx, def);
+      const refs = tplNorm.setRefs || [];
+      const completed = (e.sets||[]).filter(s=>s.completed);
+      const diffs = [];
+      completed.forEach((s, idx) => {
+        const ref = refs[idx];
+        if (!ref) {
+          diffs.push({ setIdx: idx, isExtra: true, ref: { weight:'', reps:'', time:'' }, actual: { weight: s.weight, reps: s.reps, time: s.time } });
+          return;
+        }
+        const wDiff = (def.type === 'time' || def.type === 'weight') && Number(s.weight||0) !== Number(ref.weight||0);
+        const rDiff = def.type !== 'time' && Number(s.reps||0) !== Number(ref.reps||0);
+        const tDiff = def.type === 'time' && Number(s.time||0) !== Number(ref.time||0);
+        if (wDiff || rDiff || tDiff) {
+          diffs.push({ setIdx: idx, isExtra: false, ref: { weight: ref.weight, reps: ref.reps, time: ref.time }, actual: { weight: s.weight, reps: s.reps, time: s.time } });
+        }
+      });
+      if (diffs.length) {
+        out.push({ exerciseId: e.exerciseId, def, tplEx: tplNorm, completed, diffs });
+      }
+    });
+    return out;
+  }, [active.templateId, active.exercises, data.workouts, data.exercises]);
+
+  const [applyByExercise, setApplyByExercise] = useState(() => {
+    const m = {};
+    if (initialDiff) initialDiff.forEach(d => { m[d.exerciseId] = false; });
+    return m;
+  });
+
+  const totalSets = active.exercises.reduce((acc, e) => acc + ((e.sets&&e.sets.filter(s=>s.completed).length)||0), 0);
+  const totalVolume = active.exercises.reduce((acc, e) => acc + (e.sets||[]).filter(s=>s.completed).reduce((a,s)=>a+(Number(s.weight)||0)*(Number(s.reps)||0),0), 0);
+
+  const handleConfirm = () => {
+    const extras = { disposition, intensity };
+    if (!active.templateId || !initialDiff || initialDiff.length === 0) {
+      onConfirm(null, extras); return;
+    }
+    const out = {};
+    initialDiff.forEach(group => {
+      if (!applyByExercise[group.exerciseId]) return;
+      const completed = group.completed;
+      const newRefs = completed.map(s => {
+        if (group.def.type === 'time') return { weight: s.weight === '' ? '' : Number(s.weight)||0, reps: '', time: Number(s.time)||0 };
+        return { weight: Number(s.weight)||0, reps: Number(s.reps)||0, time: '' };
+      });
+      out[group.exerciseId] = { setRefs: newRefs };
+    });
+    onConfirm(out, extras);
+  };
+
+  const renderRefVal = (ref, type) => {
+    if (type === 'time') return `${ref.weight?`${ref.weight}kg · `:''}${ref.time||'—'}s`;
+    return `${ref.weight===''?'—':ref.weight}kg × ${ref.reps===''?'—':ref.reps}`;
+  };
+
+  return (
+    <Modal open={true} onClose={onCancel} title="Finalizar treino"
+      footer={<>
+        <Btn variant="ghost" onClick={onCancel} full>Voltar</Btn>
+        <Btn variant="primary" onClick={handleConfirm} icon={Check} full>Salvar</Btn>
+      </>}>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        <div className="border border-[#1a1a1a] p-3">
+          <div className="font-display text-2xl text-white">{formatTime(Math.floor((Date.now()-active.startedAt)/1000))}</div>
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Tempo</div>
+        </div>
+        <div className="border border-[#1a1a1a] p-3">
+          <div className="font-display text-2xl text-white">{totalSets}</div>
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Séries</div>
+        </div>
+        <div className="border border-[#1a1a1a] p-3">
+          <div className="font-display text-2xl text-[#d4ff00]">{Math.round(totalVolume)}</div>
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Volume kg</div>
+        </div>
+      </div>
+
+      <div>
+        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">Disposição</div>
+        <ScaleSelector value={disposition} onChange={setDisposition} labels={DISP_LABELS} />
+      </div>
+      <div>
+        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">Intensidade</div>
+        <ScaleSelector value={intensity} onChange={setIntensity} labels={RPE_LABELS} />
+      </div>
+
+      <TextArea label="Observações finais do treino" value={active.sessionNote||''}
+        onChange={v=>onUpdateActive({...active, sessionNote:v})} placeholder="Como foi o treino?" rows={3} />
+
+      {initialDiff && initialDiff.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-[#666]">Mudanças detectadas vs. referência</div>
+          <p className="text-[10px] font-mono text-[#666] leading-relaxed">
+            Marque os exercícios que devem ter a referência atualizada com os novos valores.
+          </p>
+          {initialDiff.map(group => {
+            const c = muscleColor(group.def.muscle);
+            const willApply = applyByExercise[group.exerciseId];
+            return (
+              <div key={group.exerciseId} className="border border-[#1a1a1a] border-l-4 p-3 space-y-2" style={{ borderLeftColor: c, background: withAlpha(c, 0.05) }}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="font-mono text-sm text-white truncate flex-1">{group.def.name}</div>
+                  <Toggle value={willApply} onChange={(v)=>setApplyByExercise(prev => ({...prev, [group.exerciseId]: v}))} />
+                </div>
+                <div className="space-y-1">
+                  {group.diffs.map((d, di) => (
+                    <div key={di} className="text-[10px] font-mono flex items-center gap-2">
+                      <span className="text-[#666] w-6">#{d.setIdx+1}</span>
+                      {d.isExtra ? (
+                        <>
+                          <span className="text-[#d4ff00]">EXTRA</span>
+                          <span className="text-white ml-auto">{renderRefVal(d.actual, group.def.type)}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-[#888] truncate">{renderRefVal(d.ref, group.def.type)}</span>
+                          <span className="text-[#666]">→</span>
+                          <span className="text-white truncate">{renderRefVal(d.actual, group.def.type)}</span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {willApply && (
+                  <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00]">
+                    ✓ Referência será atualizada com {group.completed.length} séries
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {active.templateId && initialDiff && initialDiff.length === 0 && (
+        <div className="border border-[#1a1a1a] p-3 text-center">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-[#666]">
+            Todas as séries idênticas à referência. Nada a atualizar.
+          </div>
+        </div>
+      )}
+    </Modal>
+  );
+};
+
+/* HISTORY */
+const HistoryView = ({ data, onSelect }) => {
+  const grouped = useMemo(() => {
+    const g = {};
+    data.sessions.forEach(s => {
+      const d = new Date(s.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if (!g[key]) g[key]=[];
+      g[key].push(s);
+    });
+    return Object.entries(g).sort((a,b)=>b[0].localeCompare(a[0]));
+  }, [data.sessions]);
+
+  if (data.sessions.length === 0) {
+    return <div className="pb-24">
+      <Header title="Histórico" subtitle="Treinos realizados" />
+      <EmptyState icon={HistoryIcon} title="Sem registros" hint="Quando você finalizar um treino, ele vai aparecer aqui." />
+    </div>;
+  }
+
+  return (
+    <div className="pb-24">
+      <Header title="Histórico" subtitle={`${data.sessions.length} treinos`} />
+      {grouped.map(([month, sessions]) => {
+        const [y,m] = month.split('-');
+        const label = new Date(Number(y), Number(m)-1, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+        return (
+          <div key={month}>
+            <div className="px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-[#666] bg-[#070707] border-b border-[#1a1a1a]">{label}</div>
+            {sessions.map(s => {
+              const totalSets = s.exercises.reduce((a,e)=>a+((e.sets&&e.sets.filter(x=>x.completed).length)||0),0);
+              const volume = s.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed).reduce((b,x)=>b+(Number(x.weight)||0)*(Number(x.reps)||0),0),0);
+              const tpl = s.templateId ? data.workouts.find(w=>w.id===s.templateId) : null;
+              const tplColor = (tpl && tpl.color) || '#666';
+              return (
+                <button key={s.id} onClick={()=>onSelect(s)} className="w-full px-4 py-3 border-b border-[#0d0d0d] hover:bg-[#0a0a0a] text-left border-l-4" style={{ borderLeftColor: tplColor }}>
+                  <div className="flex items-baseline justify-between mb-1">
+                    <h3 className="font-display text-xl tracking-wider leading-none" style={{ color: tplColor }}>{s.templateName}</h3>
+                    <div className="text-[10px] font-mono text-[#666]">{formatShort(s.date)}</div>
+                  </div>
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] flex gap-3 flex-wrap">
+                    <span>{formatTime(Math.floor(s.duration/1000))}</span>
+                    <span>{totalSets} séries</span>
+                    <span>{Math.round(volume)}kg</span>
+                    {s.intensity && <span className="text-[#aaa]">Int {s.intensity}/5</span>}
+                    {s.disposition && <span className="text-[#aaa]">Disp {s.disposition}/5</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const sessionToTSV = (session, data) => {
+  const dateStr = formatDateForExcel(session.date);
+  const tname = session.templateName || 'Treino livre';
+  const lines = [];
+  session.exercises.forEach(e => {
+    const def = data.exercises.find(d=>d.id===e.exerciseId);
+    const exName = (def && def.name) || 'Exercício removido';
+    const sets = (e.sets||[]).filter(s=>s.completed);
+    const cells = [dateStr, tname, exName];
+    for (let i = 0; i < 5; i++) {
+      const s = sets[i];
+      if (s) {
+        const w = s.weight === '' || s.weight == null ? '' : String(s.weight).replace('.', ',');
+        const r = s.reps === '' || s.reps == null ? '' : String(s.reps);
+        const t = s.time === '' || s.time == null ? '' : String(s.time);
+        if (def && def.type === 'time') {
+          cells.push(w);
+          cells.push(t);
+        } else {
+          cells.push(w);
+          cells.push(r);
+        }
+      } else {
+        cells.push(''); cells.push('');
+      }
+    }
+    cells.push((e.sessionNote || '').replace(/\t/g,' ').replace(/\r?\n/g,' '));
+    lines.push(cells.join('\t'));
+  });
+  return lines.join('\r\n');
+};
+
+const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
+  const [confirmDel, setConfirmDel] = useState(false);
+  const totalSets = session.exercises.reduce((a,e)=>a+((e.sets&&e.sets.filter(x=>x.completed).length)||0),0);
+  const volume = session.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed).reduce((b,x)=>b+(Number(x.weight)||0)*(Number(x.reps)||0),0),0);
+
+  const copyTSV = async () => {
+    const tsv = sessionToTSV(session, data);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(tsv);
+        toast('Copiado para a área de transferência');
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = tsv; ta.style.position='fixed'; ta.style.left='-9999px';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        toast('Copiado para a área de transferência');
+      }
+    } catch (e) { console.error(e); toast('Erro ao copiar', 'error'); }
+  };
+
+  return (
+    <div className="pb-24">
+      <Header title={session.templateName} subtitle={formatDateTime(session.date)} onBack={onBack}
+        right={<div className="flex items-center gap-1">
+          <button onClick={copyTSV} className="text-[#d4ff00] p-2" title="Copiar para Excel"><Copy size={16} /></button>
+          <button onClick={()=>setConfirmDel(true)} className="text-[#ff4757] p-2"><Trash2 size={16} /></button>
+        </div>} />
+      <div className="grid grid-cols-3 gap-px bg-[#1a1a1a] border-b border-[#1a1a1a]">
+        <div className="bg-black p-3 text-center">
+          <div className="font-display text-2xl text-white tabular-nums">{formatTime(Math.floor(session.duration/1000))}</div>
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Duração</div>
+        </div>
+        <div className="bg-black p-3 text-center">
+          <div className="font-display text-2xl text-white">{totalSets}</div>
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Séries</div>
+        </div>
+        <div className="bg-black p-3 text-center">
+          <div className="font-display text-2xl text-[#d4ff00]">{Math.round(volume)}</div>
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Volume kg</div>
+        </div>
+      </div>
+
+      {(session.disposition || session.intensity) && (
+        <div className="grid grid-cols-2 gap-px bg-[#1a1a1a] border-b border-[#1a1a1a]">
+          <div className="bg-black p-3 text-center">
+            <div className="font-display text-2xl text-white tabular-nums">{session.disposition || '—'}<span className="text-[#444] text-base">/5</span></div>
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Disposição</div>
+            {session.disposition && <div className="text-[10px] font-mono text-[#888] mt-0.5">{DISP_LABELS[session.disposition]}</div>}
+          </div>
+          <div className="bg-black p-3 text-center">
+            <div className="font-display text-2xl text-white tabular-nums">{session.intensity || '—'}<span className="text-[#444] text-base">/5</span></div>
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Intensidade</div>
+            {session.intensity && <div className="text-[10px] font-mono text-[#888] mt-0.5">{RPE_LABELS[session.intensity]}</div>}
+          </div>
+        </div>
+      )}
+
+      <div className="px-4 py-3 border-b border-[#1a1a1a]">
+        <Btn variant="ghost" icon={Copy} onClick={copyTSV} full>Copiar para Excel</Btn>
+      </div>
+
+      {session.sessionNote && (
+        <div className="border-b border-[#1a1a1a] px-4 py-3">
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-1">Notas do treino</div>
+          <p className="text-sm font-mono text-white whitespace-pre-wrap leading-relaxed">{session.sessionNote}</p>
+        </div>
+      )}
+
+      {session.exercises.map((e,i) => {
+        const def = data.exercises.find(d=>d.id===e.exerciseId);
+        const sets = (e.sets||[]).filter(s=>s.completed);
+        const c = muscleColor(def && def.muscle);
+        return (
+          <div key={i} className="border-b border-[#1a1a1a] border-l-4" style={{ borderLeftColor: c, background: withAlpha(c, 0.04) }}>
+            <div className="px-4 py-3">
+              <div className="flex items-baseline justify-between mb-2">
+                <h3 className="font-display text-lg tracking-wider leading-none">{(def && def.name) || 'Exercício removido'}</h3>
+                <div className="text-[10px] font-mono text-[#666]">{sets.length} séries</div>
+              </div>
+              {sets.length > 0 && (
+                <div className="space-y-1 mb-2">
+                  {sets.map((s,si) => (
+                    <div key={si} className="flex items-center gap-3 text-xs font-mono">
+                      <span className="text-[#666] w-6">{si+1}</span>
+                      {def && def.type==='time' ? <span className="text-white">{s.weight?`${s.weight}kg · `:''}{s.time}s</span>
+                       : (<><span className="text-white">{s.weight}kg × {s.reps}</span>{s.oneRM > 0 && <span className="text-[#d4ff00] ml-auto">1RM {s.oneRM}kg</span>}</>)}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {e.sessionNote && (
+                <div className="bg-[#0a0a0a] border-l-2 border-[#666] px-2 py-1.5 mt-2">
+                  <p className="text-[11px] font-mono text-[#aaa] whitespace-pre-wrap">{e.sessionNote}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+      <Confirm open={confirmDel} title="Excluir registro?" message="Este treino será removido permanentemente do histórico."
+        onConfirm={onDelete} onCancel={()=>setConfirmDel(false)} danger />
+    </div>
+  );
+};
+
+/* PROGRESS */
+const ProgressView = ({ data }) => {
+  const [selectedExId, setSelectedExId] = useState(null);
+  const exerciseStats = useMemo(() => {
+    const map = {};
+    data.sessions.forEach(s => {
+      s.exercises.forEach(e => {
+        if (!map[e.exerciseId]) map[e.exerciseId] = [];
+        const sets = (e.sets||[]).filter(x=>x.completed);
+        if (!sets.length) return;
+        const max1RM   = Math.max(...sets.map(x=>x.oneRM ||0));
+        const maxW     = Math.max(...sets.map(x=>Number(x.weight)||0));
+        const maxReps  = Math.max(...sets.map(x=>Number(x.reps) ||0));
+        const maxTime  = Math.max(...sets.map(x=>Number(x.time) ||0));
+        const volume   = sets.reduce((a,x)=>a+(Number(x.weight)||0)*(Number(x.reps)||0),0);
+        map[e.exerciseId].push({
+          date: s.date, dateStr: formatShort(s.date),
+          templateName: s.templateName || 'Treino livre',
+          sessionId: s.id,
+          max1RM, maxW, maxReps, maxTime, volume,
+          sets, setsCount: sets.length
+        });
+      });
+    });
+    Object.keys(map).forEach(k => map[k].sort((a,b)=>a.date-b.date));
+    return map;
+  }, [data.sessions]);
+
+  if (data.sessions.length === 0) {
+    return <div className="pb-24">
+      <Header title="Progresso" subtitle="Evolução por exercício" />
+      <EmptyState icon={BarChart3} title="Sem dados" hint="Faça alguns treinos para ver gráficos." />
+    </div>;
+  }
+
+  if (selectedExId) {
+    const def = data.exercises.find(e=>e.id===selectedExId);
+    const stats = exerciseStats[selectedExId] || [];
+    if (!def || !stats.length) {
+      return <div className="pb-24">
+        <Header title="Progresso" onBack={()=>setSelectedExId(null)} />
+        <p className="px-4 py-6 text-[#666] font-mono text-sm">Sem dados para este exercício.</p>
+      </div>;
+    }
+    const isTime = def.type==='time';
+    const peak1RM = Math.max(...stats.map(s=>s.max1RM));
+    const peakDate = (stats.find(s=>s.max1RM===peak1RM)||{}).dateStr;
+    const peakW   = Math.max(...stats.map(s=>s.maxW));
+    const peakReps= Math.max(...stats.map(s=>s.maxReps));
+    const peakTime= Math.max(...stats.map(s=>s.maxTime));
+    const peakVolume = Math.max(...stats.map(s=>s.volume));
+    const c = muscleColor(def.muscle);
+
+    return (
+      <div className="pb-24">
+        <Header title={def.name} subtitle={`${stats.length} sessões registradas`} onBack={()=>setSelectedExId(null)} />
+        <div className="px-4 py-2 border-b border-[#1a1a1a] flex items-center gap-2" style={{ background: withAlpha(c, 0.08) }}>
+          <span className="w-2 h-2" style={{ background: c }} />
+          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: c }}>{def.muscle||'—'}</span>
+        </div>
+        <div className="grid grid-cols-2 gap-px bg-[#1a1a1a] border-b border-[#1a1a1a]">
+          {!isTime && (
+            <div className="bg-black p-3">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666]">Pico 1RM</div>
+              <div className="font-display text-2xl text-[#d4ff00] mt-1">{peak1RM}kg</div>
+              <div className="text-[10px] font-mono text-[#666] mt-0.5">{peakDate}</div>
+            </div>
+          )}
+          {!isTime && (
+            <div className="bg-black p-3">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666]">Carga máx</div>
+              <div className="font-display text-2xl text-white mt-1">{peakW}kg</div>
+            </div>
+          )}
+          {!isTime && (
+            <div className="bg-black p-3">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666]">Reps máx</div>
+              <div className="font-display text-2xl text-white mt-1">{peakReps}</div>
+            </div>
+          )}
+          {isTime && (
+            <div className="bg-black p-3">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666]">Tempo máx</div>
+              <div className="font-display text-2xl text-[#d4ff00] mt-1">{peakTime}s</div>
+            </div>
+          )}
+          <div className="bg-black p-3">
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#666]">Volume máx</div>
+            <div className="font-display text-2xl text-white mt-1">{Math.round(peakVolume)}</div>
+          </div>
+        </div>
+        {!isTime && <ChartCard title="1RM estimado"     data={stats} dataKey="max1RM"  suffix="kg" color={c} />}
+        {!isTime && <ChartCard title="Carga máxima"     data={stats} dataKey="maxW"    suffix="kg" color={c} />}
+        {!isTime && <ChartCard title="Repetições máximas" data={stats} dataKey="maxReps" suffix="" color={c} />}
+        {isTime  && <ChartCard title="Tempo máximo"     data={stats} dataKey="maxTime" suffix="s" color={c} />}
+        {!isTime && <ChartCard title="Volume total"     data={stats} dataKey="volume"  suffix="kg" color={c} />}
+
+        <div className="px-4 py-3 border-t border-[#1a1a1a]">
+          <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-3">Histórico detalhado</div>
+          <div className="space-y-3">
+            {[...stats].reverse().map((s,i) => (
+              <div key={i} className="border border-[#1a1a1a] p-3">
+                <div className="flex items-baseline justify-between mb-0.5 gap-2">
+                  <div className="font-display text-base tracking-wider truncate">{s.templateName}</div>
+                  <div className="text-[10px] font-mono text-[#666] flex-shrink-0">{formatDate(s.date)}</div>
+                </div>
+                <div className="text-[10px] font-mono text-[#666] tracking-widest mb-2 flex gap-3 flex-wrap">
+                  {!isTime && <span className="text-[#d4ff00]">1RM máx {s.max1RM}kg</span>}
+                  {!isTime && <span>Pico {s.maxW}kg × {s.maxReps}</span>}
+                  {isTime && <span className="text-[#d4ff00]">Pico {s.maxTime}s</span>}
+                  <span>{s.setsCount} séries</span>
+                </div>
+                <div className="space-y-0.5">
+                  {s.sets.map((set, si) => (
+                    <div key={si} className="flex items-center gap-3 text-xs font-mono">
+                      <span className="text-[#666] w-5">{si+1}</span>
+                      {isTime ? <span className="text-white">{set.weight?`${set.weight}kg · `:''}{set.time}s</span>
+                        : (<><span className="text-white">{set.weight}kg × {set.reps}</span>{set.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {set.oneRM}kg</span>}</>)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const exsWithData = data.exercises.filter(e => exerciseStats[e.id] && exerciseStats[e.id].length);
+  const groups = {};
+  exsWithData.forEach(ex => {
+    const m = ex.muscle || 'Sem grupo';
+    if (!groups[m]) groups[m]=[];
+    groups[m].push(ex);
+  });
+  const groupEntries = Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0],'pt-BR'));
+
+  return (
+    <div className="pb-24">
+      <Header title="Progresso" subtitle={`${exsWithData.length} exercícios com dados`} />
+      {groupEntries.map(([muscle, exs]) => {
+        const c = muscleColor(muscle);
+        return (
+          <div key={muscle}>
+            <div className="px-4 py-2 text-[10px] font-mono uppercase tracking-widest flex items-center gap-2 border-b border-[#1a1a1a]" style={{ color: c, background: withAlpha(c, 0.08) }}>
+              <span className="w-2 h-2" style={{ background: c }} />
+              {muscle}
+            </div>
+            {exs.map(ex => {
+              const stats = exerciseStats[ex.id];
+              const last = stats[stats.length-1];
+              const first = stats[0];
+              const delta1RM = ex.type==='weight' ? last.max1RM - first.max1RM : 0;
+              const isPositive = delta1RM > 0;
+              return (
+                <button key={ex.id} onClick={()=>setSelectedExId(ex.id)}
+                  className="w-full px-4 py-3 flex items-center gap-3 hover:bg-[#0a0a0a] text-left border-b border-[#0d0d0d] last:border-b-0 border-l-4"
+                  style={{ borderLeftColor: c }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-sm text-white truncate">{ex.name}</div>
+                    <div className="text-[10px] font-mono text-[#666] mt-0.5">
+                      {stats.length} sessões · {ex.type==='weight' ? `Pico 1RM ${Math.max(...stats.map(s=>s.max1RM))}kg`
+                        : `Pico ${Math.max(...stats.map(s=>s.maxTime))}s`}
+                    </div>
+                  </div>
+                  {ex.type==='weight' && stats.length > 1 && (
+                    <div className={`text-xs font-mono ${isPositive?'text-[#d4ff00]':delta1RM<0?'text-[#ff4757]':'text-[#666]'}`}>
+                      {isPositive?'+':''}{delta1RM.toFixed(1)}kg
+                    </div>
+                  )}
+                  <ChevronRight size={14} className="text-[#444]" />
+                </button>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const ChartCard = ({ title, data, dataKey, suffix, color = '#d4ff00' }) => (
+  <div className="px-4 py-4 border-b border-[#1a1a1a]">
+    <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-3">{title}</div>
+    <div style={{ width: '100%', height: 180 }}>
+      <ResponsiveContainer>
+        <LineChart data={data} margin={{ top:5, right:10, left:-20, bottom:0 }}>
+          <CartesianGrid stroke="#1a1a1a" strokeDasharray="2 2" vertical={false} />
+          <XAxis dataKey="dateStr" tick={{fill:'#666',fontSize:10,fontFamily:'monospace'}} axisLine={{stroke:'#1a1a1a'}} tickLine={{stroke:'#1a1a1a'}} />
+          <YAxis tick={{fill:'#666',fontSize:10,fontFamily:'monospace'}} axisLine={{stroke:'#1a1a1a'}} tickLine={{stroke:'#1a1a1a'}} />
+          <Tooltip contentStyle={{background:'#000',border:'1px solid #333',fontFamily:'monospace',fontSize:12}}
+            labelStyle={{color:'#888'}} itemStyle={{color}} formatter={(v)=>[`${v}${suffix}`, title]} />
+          <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2} dot={{fill:color, r:3}} activeDot={{r:5}} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  </div>
+);
+
+/* DRIVE SETUP MODAL */
+const DriveSetupModal = ({ open, currentClientId, onSave, onClose }) => {
+  const [cid, setCid] = useState(currentClientId || '');
+  return (
+    <Modal open={open} onClose={onClose} title="Configurar Google Drive"
+      footer={<>
+        <Btn variant="ghost" onClick={onClose} full>Cancelar</Btn>
+        <Btn variant="primary" onClick={()=>{ onSave(cid.trim()); }} icon={Save} full>Salvar</Btn>
+      </>}>
+      <div className="text-[11px] font-mono text-[#aaa] leading-relaxed space-y-2">
+        <p>Para sincronizar com o Google Drive, você precisa criar um Client ID OAuth no Google Cloud Console (gratuito).</p>
+        <p className="text-[#d4ff00]">⚠ Importante: o Google não permite OAuth com arquivos abertos via file://. Você precisa hospedar o treino.html num servidor (GitHub Pages, Netlify, etc) ou usar um servidor local.</p>
+      </div>
+      <div className="border border-[#1a1a1a] p-3 space-y-2">
+        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666]">Passo a passo</div>
+        <ol className="text-[10px] font-mono text-[#aaa] leading-relaxed space-y-1" style={{listStyle:'decimal', paddingLeft:'1.2em'}}>
+          <li>Acesse console.cloud.google.com e crie um projeto</li>
+          <li>APIs e serviços → Biblioteca → ative "Google Drive API"</li>
+          <li>Tela de consentimento OAuth → tipo Externo → preencha nome, email; adicione seu email em "usuários de teste"</li>
+          <li>Credenciais → Criar credenciais → ID do cliente OAuth → Aplicativo da Web</li>
+          <li>Em "Origens JavaScript autorizadas" adicione o domínio onde vai hospedar (ex: https://seu-usuario.github.io)</li>
+          <li>Copie o Client ID e cole abaixo</li>
+        </ol>
+      </div>
+      <Input label="Client ID" value={cid} onChange={setCid} placeholder="123abc.apps.googleusercontent.com" autoFocus />
+    </Modal>
+  );
+};
+
+/* CONFIG */
+const ConfigView = ({ data, setData, toast }) => {
+  const fileRef = useRef();
+  const [importPreview, setImportPreview] = useState(null);
+  const [confirmReplace, setConfirmReplace] = useState(false);
+  const [confirmWipe, setConfirmWipe] = useState(false);
+  const [confirmReplaceFromDrive, setConfirmReplaceFromDrive] = useState(false);
+  const [drivePreview, setDrivePreview] = useState(null);
+  const [driveBusy, setDriveBusy] = useState(false);
+  const [driveSetup, setDriveSetup] = useState(false);
+  const [config, setConfig] = useState(driveLoadConfig());
+  const [authed, setAuthed] = useState(!!driveLoadToken());
+
+  const handleSetClientId = (cid) => {
+    const newCfg = { ...config, clientId: cid };
+    setConfig(newCfg);
+    driveSaveConfig(newCfg);
+    setDriveSetup(false);
+    if (cid) toast('Client ID salvo. Agora toque em "Conectar".'); else toast('Client ID removido.');
+  };
+
+  const ensureTokenClient = () => {
+    if (!config.clientId) throw new Error('Configure o Client ID primeiro.');
+    if (!tokenClient) {
+      driveInitTokenClient(config.clientId, () => {});
+    }
+  };
+
+  const driveConnect = async () => {
+    try {
+      setDriveBusy(true);
+      ensureTokenClient();
+      await driveRequestToken(true);
+      setAuthed(true);
+      toast('Conectado ao Google Drive');
+    } catch (e) {
+      console.error(e); toast('Falha ao conectar: ' + e.message, 'error');
+    } finally { setDriveBusy(false); }
+  };
+
+  const driveDisconnect = () => {
+    driveSaveToken(null);
+    setAuthed(false);
+    toast('Desconectado');
+  };
+
+  const driveSaveAction = async () => {
+    try {
+      setDriveBusy(true);
+      ensureTokenClient();
+      const token = await driveGetValidToken();
+      const existing = await driveFindFile(token, DRIVE_FILE_NAME);
+      const payload = { version: APP_VERSION, exportedAt: new Date().toISOString(), data };
+      await driveUpload(token, JSON.stringify(payload, null, 2), existing && existing.id);
+      toast('Salvo no Drive');
+    } catch (e) {
+      console.error(e); toast('Erro ao salvar: ' + e.message, 'error');
+    } finally { setDriveBusy(false); }
+  };
+
+  const driveLoadAction = async () => {
+    try {
+      setDriveBusy(true);
+      ensureTokenClient();
+      const token = await driveGetValidToken();
+      const existing = await driveFindFile(token, DRIVE_FILE_NAME);
+      if (!existing) { toast('Nenhum backup encontrado no Drive', 'error'); return; }
+      const text = await driveDownload(token, existing.id);
+      const parsed = JSON.parse(text);
+      const payload = parsed.data || parsed;
+      if (!payload || !Array.isArray(payload.exercises) || !Array.isArray(payload.workouts) || !Array.isArray(payload.sessions)) {
+        throw new Error('Formato inválido');
+      }
+      setDrivePreview({ payload, modifiedTime: existing.modifiedTime });
+      setConfirmReplaceFromDrive(true);
+    } catch (e) {
+      console.error(e); toast('Erro ao carregar: ' + e.message, 'error');
+    } finally { setDriveBusy(false); }
+  };
+
+  const exportData = () => {
+    try {
+      const payload = { version: APP_VERSION, exportedAt: new Date().toISOString(), data };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dt = new Date().toISOString().split('T')[0];
+      a.href = url; a.download = `treino-backup-${dt}.json`;
+      document.body.appendChild(a); a.click();
+      setTimeout(() => { URL.revokeObjectURL(url); document.body.removeChild(a); }, 100);
+      toast('Backup exportado.');
+    } catch (e) { console.error(e); toast('Erro ao exportar.', 'error'); }
+  };
+
+  const handleFile = async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try {
+      const text = await f.text();
+      const parsed = JSON.parse(text);
+      const payload = parsed.data || parsed;
+      if (!payload || !Array.isArray(payload.exercises) || !Array.isArray(payload.workouts) || !Array.isArray(payload.sessions)) {
+        throw new Error('Formato inválido');
+      }
+      setImportPreview(payload);
+      setConfirmReplace(true);
+    } catch (err) { console.error(err); toast('Arquivo inválido.', 'error'); }
+    e.target.value = '';
+  };
+
+  const doImport = () => {
+    setData(importPreview);
+    setConfirmReplace(false); setImportPreview(null);
+    toast('Dados importados.');
+  };
+  const doImportFromDrive = () => {
+    if (drivePreview) setData(drivePreview.payload);
+    setConfirmReplaceFromDrive(false); setDrivePreview(null);
+    toast('Dados importados do Drive.');
+  };
+  const wipeAll = () => {
+    setData({ exercises: [], workouts: [], sessions: [] });
+    setConfirmWipe(false);
+    toast('Dados removidos.');
+  };
+
+  const isFileProto = location.protocol === 'file:';
+
+  return (
+    <div className="pb-24">
+      <Header title="Config" subtitle="Backup e ajustes" />
+      <div className="p-4 space-y-4">
+        <div>
+          <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">Resumo</div>
+          <div className="grid grid-cols-3 gap-px bg-[#1a1a1a] border border-[#1a1a1a]">
+            <div className="bg-black p-3 text-center">
+              <div className="font-display text-xl text-white">{data.exercises.length}</div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Exerc</div>
+            </div>
+            <div className="bg-black p-3 text-center">
+              <div className="font-display text-xl text-white">{data.workouts.length}</div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Treinos</div>
+            </div>
+            <div className="bg-black p-3 text-center">
+              <div className="font-display text-xl text-[#d4ff00]">{data.sessions.length}</div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Sessões</div>
+            </div>
+          </div>
+        </div>
+
+        {/* DRIVE SECTION */}
+        <div className="border border-[#d4ff00]/40 p-4 space-y-3">
+          <div>
+            <h3 className="font-display text-lg tracking-wider mb-1 text-[#d4ff00]">Google Drive</h3>
+            <p className="text-[10px] font-mono text-[#666] leading-relaxed">
+              Sincronize seus dados entre dispositivos via Google Drive. Os dados ficam num arquivo único <span className="text-[#aaa]">{DRIVE_FILE_NAME}</span> na sua conta.
+            </p>
+          </div>
+
+          {isFileProto && (
+            <div className="border border-[#ff4757]/40 bg-[#ff4757]/10 p-3 text-[10px] font-mono text-[#ff4757] leading-relaxed">
+              ⚠ Você está abrindo o app via file://. O Google não permite login OAuth nesse modo. Hospede o arquivo num servidor (GitHub Pages, Netlify) para usar o Drive.
+            </div>
+          )}
+
+          {!config.clientId ? (
+            <Btn variant="accent" onClick={()=>setDriveSetup(true)} icon={Settings} full>Configurar Client ID</Btn>
+          ) : (
+            <>
+              <div className="text-[10px] font-mono text-[#666] flex items-center justify-between gap-2">
+                <span className="truncate">Client ID: {config.clientId.slice(0,16)}…</span>
+                <button onClick={()=>setDriveSetup(true)} className="text-[#d4ff00] underline flex-shrink-0">trocar</button>
+              </div>
+
+              {!authed ? (
+                <Btn variant="primary" onClick={driveConnect} icon={Cloud} disabled={driveBusy} full>
+                  {driveBusy ? 'Conectando...' : 'Conectar ao Drive'}
+                </Btn>
+              ) : (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <Btn variant="primary" onClick={driveSaveAction} icon={CloudUp} disabled={driveBusy}>Salvar</Btn>
+                    <Btn variant="ghost" onClick={driveLoadAction} icon={CloudDown} disabled={driveBusy}>Carregar</Btn>
+                  </div>
+                  <Btn variant="ghost" onClick={driveDisconnect} icon={LogOut} size="sm" full>Desconectar</Btn>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div className="border border-[#1a1a1a] p-4 space-y-3">
+          <div>
+            <h3 className="font-display text-lg tracking-wider mb-1">Exportar arquivo</h3>
+            <p className="text-[10px] font-mono text-[#666] leading-relaxed">Baixa um JSON com todos os dados.</p>
+          </div>
+          <Btn icon={Download} onClick={exportData} variant="ghost" full>Exportar backup</Btn>
+        </div>
+        <div className="border border-[#1a1a1a] p-4 space-y-3">
+          <div>
+            <h3 className="font-display text-lg tracking-wider mb-1">Importar arquivo</h3>
+            <p className="text-[10px] font-mono text-[#666] leading-relaxed">Carrega um JSON e SUBSTITUI todos os dados atuais.</p>
+          </div>
+          <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={handleFile} />
+          <Btn icon={Upload} variant="ghost" onClick={()=>fileRef.current && fileRef.current.click()} full>Importar backup</Btn>
+        </div>
+        <div className="border border-[#ff4757]/30 p-4 space-y-3">
+          <div>
+            <h3 className="font-display text-lg tracking-wider mb-1 text-[#ff4757]">Apagar tudo</h3>
+            <p className="text-[10px] font-mono text-[#666] leading-relaxed">Remove permanentemente todos os dados locais.</p>
+          </div>
+          <Btn icon={Trash2} variant="danger" onClick={()=>setConfirmWipe(true)} full>Apagar todos os dados</Btn>
+        </div>
+        <div className="text-center text-[9px] font-mono text-[#444] tracking-widest pt-4">Versão {APP_VERSION}</div>
+      </div>
+
+      <DriveSetupModal open={driveSetup} currentClientId={config.clientId} onSave={handleSetClientId} onClose={()=>setDriveSetup(false)} />
+
+      <Confirm open={confirmReplace} title="Substituir todos os dados?"
+        message={importPreview ? `O arquivo contém ${importPreview.exercises.length} exercícios, ${importPreview.workouts.length} treinos e ${importPreview.sessions.length} sessões.` : ''}
+        onConfirm={doImport} onCancel={()=>{setConfirmReplace(false); setImportPreview(null);}} danger />
+      <Confirm open={confirmReplaceFromDrive} title="Substituir com dados do Drive?"
+        message={drivePreview ? `Backup do Drive (modificado em ${new Date(drivePreview.modifiedTime).toLocaleString('pt-BR')}) contém ${drivePreview.payload.exercises.length} exercícios, ${drivePreview.payload.workouts.length} treinos e ${drivePreview.payload.sessions.length} sessões. Os dados locais serão substituídos.` : ''}
+        onConfirm={doImportFromDrive} onCancel={()=>{setConfirmReplaceFromDrive(false); setDrivePreview(null);}} danger />
+      <Confirm open={confirmWipe} title="Apagar tudo?"
+        message="Você vai perder TODOS os dados locais. Esta ação não pode ser desfeita."
+        onConfirm={wipeAll} onCancel={()=>setConfirmWipe(false)} danger />
+    </div>
+  );
+};
+
+/* BOTTOM NAV - flex dinâmico */
+const BottomNav = ({ tab, onTab }) => {
+  const tabs = [
+    { id:'home',      label:'Treinar',   icon:Home },
+    { id:'exercises', label:'Exerc',     icon:Dumbbell },
+    { id:'history',   label:'Histórico', icon:HistoryIcon },
+    { id:'progress',  label:'Progresso', icon:BarChart3 },
+    { id:'config',    label:'Config',    icon:Settings },
+  ];
+  return (
+    <div className="fixed bottom-0 left-0 right-0 bg-black border-t border-[#1a1a1a] z-30 safe-bottom bottom-nav">
+      {tabs.map(t => {
+        const IconC = t.icon; const sel = tab === t.id;
+        return (
+          <button key={t.id} onClick={()=>onTab(t.id)} style={{ color: sel ? '#d4ff00' : '#666' }}>
+            <IconC size={18} strokeWidth={sel?2.4:1.6} />
+            <span>{t.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+/* APP */
+function App() {
+  const { data, setData, active, setActive } = useStorage();
+  const [tab, setTab] = useState('home');
+  const [editingWorkout, setEditingWorkout] = useState(null);
+  const [viewingSession, setViewingSession] = useState(null);
+  const [finishedSession, setFinishedSession] = useState(null);
+  const { show: toast, Toast } = useToast();
+
+  const goTab = useCallback((newTab) => {
+    setViewingSession(null);
+    setEditingWorkout(null);
+    setTab(newTab);
+  }, []);
+
+  const startWorkout = (template) => {
+    if (template.exercises.length === 0) return;
+    const sessionId = uid();
+    const session = {
+      id: sessionId,
+      templateId: template.id,
+      templateName: template.name,
+      notes: template.notes||'',
+      sessionNote:'',
+      date: Date.now(),
+      startedAt: Date.now(),
+      elapsed: 0,
+      disposition: null,
+      intensity: null,
+      exercises: template.exercises.map(we => {
+        const def = data.exercises.find(d=>d.id===we.exerciseId);
+        const norm = normalizeTemplateExercise(we, def);
+        const sets = def ? buildInitialSets(def, norm) : [];
+        return {
+          exerciseId: we.exerciseId,
+          targetSets: norm.targetSets,
+          targetRepsMin: norm.targetRepsMin,
+          targetRepsMax: norm.targetRepsMax,
+          notes: norm.notes,
+          sessionNote:'',
+          sets
+        };
+      })
+    };
+    setActive(session);
+  };
+
+  if (active) {
+    return (
+      <>
+        <ActiveWorkout active={active} setActive={setActive} data={data} setData={setData}
+          onFinish={(session) => { if (session) setFinishedSession(session); }} />
+        {finishedSession && (
+          <Modal open={true} onClose={()=>setFinishedSession(null)} title="Treino finalizado"
+            footer={<Btn onClick={()=>setFinishedSession(null)} full>OK</Btn>}>
+            <p className="text-sm font-mono text-[#aaa]">Salvo no histórico.</p>
+          </Modal>
+        )}
+        {Toast}
+      </>
+    );
+  }
+
+  if (editingWorkout) {
+    return (<>
+      <WorkoutEditor workout={editingWorkout} data={data} setData={setData} onClose={()=>setEditingWorkout(null)} />
+      {Toast}
+    </>);
+  }
+
+  if (viewingSession) {
+    return (
+      <>
+        <SessionDetail session={viewingSession} data={data} onBack={()=>setViewingSession(null)}
+          onDelete={()=>{ setData(d=>({...d, sessions: d.sessions.filter(s=>s.id!==viewingSession.id)})); setViewingSession(null); }}
+          toast={toast} />
+        <BottomNav tab={tab} onTab={goTab} />
+        {Toast}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="min-h-screen bg-black text-white">
+        {tab==='home'      && <WorkoutsView data={data} onStart={startWorkout} onEdit={setEditingWorkout} />}
+        {tab==='exercises' && <ExercisesView data={data} setData={setData} />}
+        {tab==='history'   && <HistoryView   data={data} onSelect={setViewingSession} />}
+        {tab==='progress'  && <ProgressView  data={data} />}
+        {tab==='config'    && <ConfigView    data={data} setData={setData} toast={toast} />}
+      </div>
+      <BottomNav tab={tab} onTab={goTab} />
+      {Toast}
+    </>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
