@@ -269,19 +269,19 @@ input[type=number] { -moz-appearance: textfield; }
 .safe-bottom-pad { padding-bottom: calc(8rem + env(safe-area-inset-bottom)); }
 
 /* Tabela de séries */
-.set-table { width: 100%; border-collapse: collapse; }
-.set-table th, .set-table td { padding: 6px 4px; vertical-align: middle; }
+.set-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.set-table th, .set-table td { padding: 6px 2px; vertical-align: middle; }
 .set-table th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; font-weight: normal; text-align: center; border-bottom: 1px solid #0d0d0d; background: #050505; }
 .set-table td { border-bottom: 1px solid #0d0d0d; text-align: center; font-size: 0.875rem; }
 .set-table tr:last-child td { border-bottom: none; }
-.set-table .col-num { width: 28px; color: #666; font-size: 12px; }
-.set-table .col-action { width: 32px; }
-.set-table .col-check { width: 44px; }
-.set-table .cell-input { width: 100%; background: transparent; border: 1px solid #1a1a1a; color: white; padding: 6px 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; text-align: center; outline: none; }
+.set-table .col-num { width: 22px; color: #666; font-size: 11px; }
+.set-table .col-action { width: 28px; }
+.set-table .col-check { width: 40px; }
+.set-table .cell-input { background: transparent; border: 1px solid #1a1a1a; color: white; padding: 6px 2px; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; text-align: center; outline: none; min-width: 0; }
 .set-table .cell-input:focus { border-color: #d4ff00; }
 .set-table .cell-input:disabled { border-color: transparent; color: #666; }
 .set-table tr.completed td { background: #0a0a0a; }
-.set-table .cell-1rm { color: #d4ff00; font-size: 12px; }
+.set-table .cell-1rm { color: #d4ff00; font-size: 11px; width: 38px; }
 
 /* Bottom nav dinâmica - flex em vez de grid fixo */
 .bottom-nav {
@@ -386,7 +386,7 @@ const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v6';
+const APP_VERSION = '2026-04-30-v7';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -761,6 +761,57 @@ const Pill = ({ children, color }) => {
   return <span className="inline-block text-[9px] font-mono uppercase tracking-widest px-2 py-1 border border-[#222] text-[#888]">{children}</span>;
 };
 
+/* NumStepper: input numérico com botões - e + nas laterais.
+   - "menos" à esquerda, "mais" à direita.
+   - step configurável (default 1, ex: 0.5 para carga, 1 para reps/tempo).
+   - Nunca permite valores negativos.
+   - Preserva string vazia (não força 0 ao apagar).
+   - Compacto pra caber em células de tabela. */
+const NumStepper = ({ value, onChange, step = 1, disabled, placeholder = '—' }) => {
+  const isEmpty = value === '' || value == null;
+  const num = isEmpty ? 0 : Number(value) || 0;
+  const isInt = step >= 1 && Number.isInteger(step);
+
+  const setVal = (n) => {
+    if (n < 0) n = 0;
+    // arredonda pra step, evita 12.500000001 etc.
+    const rounded = Math.round(n / step) * step;
+    onChange(isInt ? Math.round(rounded) : Math.round(rounded * 100) / 100);
+  };
+  const dec = () => { if (disabled) return; setVal(num - step); };
+  const inc = () => { if (disabled) return; setVal(num + step); };
+
+  const handleInput = (str) => {
+    if (str === '') { onChange(''); return; }
+    const n = isInt ? parseInt(str) : parseFloat(str);
+    if (isNaN(n) || n < 0) { onChange(''); return; }
+    onChange(n);
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, width: '100%' }}>
+      <button type="button" onClick={dec} disabled={disabled || (num <= 0 && !isEmpty)}
+        className={`flex-shrink-0 border border-[#1a1a1a] flex items-center justify-center transition-colors ${disabled?'opacity-30':'hover:border-[#333] hover:text-[#d4ff00] text-[#888]'}`}
+        style={{ width: 28, borderRight: 'none' }}>
+        <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 600 }}>−</span>
+      </button>
+      <input type="number" inputMode="decimal" step={step} min="0"
+        value={isEmpty ? '' : value}
+        onChange={(e)=>handleInput(e.target.value)}
+        onFocus={(e)=>e.target.select()}
+        placeholder={placeholder}
+        disabled={disabled}
+        className="cell-input"
+        style={{ flex: 1, minWidth: 0, borderLeft: 'none', borderRight: 'none' }} />
+      <button type="button" onClick={inc} disabled={disabled}
+        className={`flex-shrink-0 border border-[#1a1a1a] flex items-center justify-center transition-colors ${disabled?'opacity-30':'hover:border-[#333] hover:text-[#d4ff00] text-[#888]'}`}
+        style={{ width: 28, borderLeft: 'none' }}>
+        <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 600 }}>+</span>
+      </button>
+    </div>
+  );
+};
+
 const useToast = () => {
   const [msg, setMsg] = useState('');
   const [variant, setVariant] = useState('info');
@@ -906,52 +957,95 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, onDelete }) => {
 };
 
 /* WORKOUTS */
-const WorkoutsView = ({ data, onStart, onEdit }) => (
-  <div className="pb-24">
-    <Header title="Treinos" subtitle={`${data.workouts.length} modelos`}
-      right={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value})} size="sm">Novo</Btn>} />
-    {data.workouts.length === 0 ? (
-      <EmptyState icon={Activity} title="Nenhum treino"
-        hint="Crie modelos de treino combinando seus exercícios."
-        action={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value})}>Criar primeiro</Btn>} />
-    ) : (
-      <div className="divide-y divide-[#0d0d0d]">
-        {data.workouts.map(w => {
-          const lastSession = data.sessions.filter(s=>s.templateId===w.id).sort((a,b)=>b.date-a.date)[0];
-          const muscleCounts = {};
-          w.exercises.forEach(we => {
-            const ex = data.exercises.find(e=>e.id===we.exerciseId);
-            const m = (ex && ex.muscle) || 'Sem grupo';
-            muscleCounts[m] = (muscleCounts[m] || 0) + 1;
-          });
-          const muscleEntries = Object.entries(muscleCounts).sort((a,b)=>b[1]-a[1]);
-          const wColor = w.color || WORKOUT_COLORS[0].value;
-          return (
-            <div key={w.id} className="px-4 py-4 border-l-4" style={{ borderLeftColor: wColor }}>
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-display text-2xl tracking-wider leading-none" style={{ color: wColor }}>{w.name||'Sem nome'}</h3>
-                  <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mt-1.5">
-                    {w.exercises.length} exerc · {lastSession ? `Último: ${formatShort(lastSession.date)}` : 'Nunca executado'}
-                  </div>
-                </div>
-                <button onClick={()=>onEdit(w)} className="p-2 text-[#888] hover:text-white"><Edit3 size={16} /></button>
-              </div>
-              {muscleEntries.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
-                  {muscleEntries.map(([m, count]) => (
-                    <Pill key={m} color={muscleColor(m)}>{m} · {count}</Pill>
-                  ))}
-                </div>
-              )}
-              <Btn icon={Play} onClick={()=>onStart(w)} full disabled={w.exercises.length === 0}>Iniciar treino</Btn>
+const WorkoutsView = ({ data, onStart, onEdit }) => {
+  const [showInactive, setShowInactive] = useState(false);
+  const activeWorkouts = data.workouts.filter(w => !w.inactive);
+  const inactiveWorkouts = data.workouts.filter(w => w.inactive);
+
+  const renderCard = (w, opts={}) => {
+    const compact = !!opts.compact;
+    const lastSession = data.sessions.filter(s=>s.templateId===w.id).sort((a,b)=>b.date-a.date)[0];
+    // Conta séries (não exercícios) por grupo muscular
+    const muscleSetCounts = {};
+    w.exercises.forEach(we => {
+      const ex = data.exercises.find(e=>e.id===we.exerciseId);
+      const m = (ex && ex.muscle) || 'Sem grupo';
+      const sets = (we.setRefs || []).length || we.targetSets || 0;
+      muscleSetCounts[m] = (muscleSetCounts[m] || 0) + sets;
+    });
+    const muscleEntries = Object.entries(muscleSetCounts).sort((a,b)=>b[1]-a[1]);
+    const totalSets = muscleEntries.reduce((a,[,n])=>a+n,0);
+    const wColor = w.color || WORKOUT_COLORS[0].value;
+    if (compact) {
+      return (
+        <button key={w.id} onClick={()=>onEdit(w)}
+          className="w-full px-4 py-2 text-left border-b border-[#0d0d0d] hover:bg-[#0a0a0a] flex items-center gap-2"
+          style={{ borderLeftWidth: '4px', borderLeftStyle: 'solid', borderLeftColor: wColor }}>
+          <span className="font-mono text-xs flex-1 truncate" style={{ color: wColor, opacity: 0.8 }}>{w.name||'Sem nome'}</span>
+          <span className="text-[9px] font-mono text-[#666]">inativo</span>
+          <Edit3 size={12} className="text-[#444] flex-shrink-0" />
+        </button>
+      );
+    }
+    return (
+      <div key={w.id} className="px-4 py-4 border-l-4" style={{ borderLeftColor: wColor }}>
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-display text-2xl tracking-wider leading-none" style={{ color: wColor }}>{w.name||'Sem nome'}</h3>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mt-1.5">
+              {totalSets} séries · {lastSession ? `Último: ${formatShort(lastSession.date)}` : 'Nunca executado'}
             </div>
-          );
-        })}
+          </div>
+          <button onClick={()=>onEdit(w)} className="p-2 text-[#888] hover:text-white"><Edit3 size={16} /></button>
+        </div>
+        {muscleEntries.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {muscleEntries.map(([m, count]) => (
+              <Pill key={m} color={muscleColor(m)}>{m} · {count}</Pill>
+            ))}
+          </div>
+        )}
+        {/* Botão iniciar usa cor do treino como fundo */}
+        <button type="button" onClick={()=>onStart(w)} disabled={w.exercises.length === 0}
+          className={`w-full px-5 py-4 text-base font-mono uppercase tracking-wider font-medium transition-all duration-150 active:scale-[0.98] flex items-center justify-center gap-2 ${w.exercises.length === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90'}`}
+          style={{ background: wColor, color: '#000' }}>
+          <Play size={16} strokeWidth={2.4} />
+          Iniciar treino
+        </button>
       </div>
-    )}
-  </div>
-);
+    );
+  };
+
+  return (
+    <div className="pb-24">
+      <Header title="Treinos" subtitle={`${activeWorkouts.length} ativos${inactiveWorkouts.length?` · ${inactiveWorkouts.length} inativos`:''}`}
+        right={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value})} size="sm">Novo</Btn>} />
+      {data.workouts.length === 0 ? (
+        <EmptyState icon={Activity} title="Nenhum treino"
+          hint="Crie modelos de treino combinando seus exercícios."
+          action={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value})}>Criar primeiro</Btn>} />
+      ) : (
+        <>
+          <div className="divide-y divide-[#0d0d0d]">
+            {activeWorkouts.map(w => renderCard(w))}
+          </div>
+          {inactiveWorkouts.length > 0 && (
+            <div className="border-t border-[#1a1a1a] mt-4">
+              <button onClick={()=>setShowInactive(s=>!s)}
+                className="w-full px-4 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-[#666] hover:text-[#aaa]">
+                <span>Inativos ({inactiveWorkouts.length})</span>
+                {showInactive ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+              {showInactive && (
+                <div>{inactiveWorkouts.map(w => renderCard(w, {compact:true}))}</div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
 
 const WorkoutEditor = ({ workout, data, setData, onClose }) => {
   const [w, setW] = useState({
@@ -1065,7 +1159,20 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
           </div>
         )}
         {workout.id && (
-          <div className="p-4 mt-6">
+          <div className="p-4 mt-6 space-y-3">
+            <div className="border border-[#1a1a1a] px-3">
+              <Toggle
+                label="Treino inativo"
+                hint="Treinos inativos não aparecem na lista principal e não podem ser iniciados. Ficam colapsados no fim da lista."
+                value={!!w.inactive}
+                onChange={(v)=>setW({...w, inactive: v})}
+              />
+            </div>
+            <Btn variant="ghost" onClick={()=>{
+              const dup = { ...w, id: uid(), name: w.name + ' (cópia)', inactive: false };
+              setData(d => ({ ...d, workouts: [...d.workouts, dup] }));
+              onClose();
+            }} icon={Copy} full>Duplicar treino</Btn>
             <Btn variant="danger" onClick={()=>setConfirmDelete(true)} icon={Trash2} full>Excluir treino</Btn>
           </div>
         )}
@@ -1171,21 +1278,13 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
                 <td className="col-num">{i+1}</td>
                 {isTime ? (
                   <>
-                    <td><input type="number" inputMode="decimal" step="0.5" className="cell-input" value={r.weight==null?'':r.weight}
-                      onFocus={(e)=>e.target.select()}
-                      onChange={(e)=>updateRef(i, {weight: e.target.value === '' ? '' : (parseFloat(e.target.value)||0)})} /></td>
-                    <td><input type="number" inputMode="numeric" className="cell-input" value={r.time==null?'':r.time}
-                      onFocus={(e)=>e.target.select()}
-                      onChange={(e)=>updateRef(i, {time: e.target.value === '' ? '' : (parseInt(e.target.value)||0)})} /></td>
+                    <td><NumStepper value={r.weight} onChange={v=>updateRef(i, {weight:v})} step={0.5} /></td>
+                    <td><NumStepper value={r.time} onChange={v=>updateRef(i, {time:v})} step={1} /></td>
                   </>
                 ) : (
                   <>
-                    <td><input type="number" inputMode="decimal" step="0.5" className="cell-input" value={r.weight==null?'':r.weight}
-                      onFocus={(e)=>e.target.select()}
-                      onChange={(e)=>updateRef(i, {weight: e.target.value === '' ? '' : (parseFloat(e.target.value)||0)})} /></td>
-                    <td><input type="number" inputMode="numeric" className="cell-input" value={r.reps==null?'':r.reps}
-                      onFocus={(e)=>e.target.select()}
-                      onChange={(e)=>updateRef(i, {reps: e.target.value === '' ? '' : (parseInt(e.target.value)||0)})} /></td>
+                    <td><NumStepper value={r.weight} onChange={v=>updateRef(i, {weight:v})} step={0.5} /></td>
+                    <td><NumStepper value={r.reps} onChange={v=>updateRef(i, {reps:v})} step={1} /></td>
                   </>
                 )}
               </tr>
@@ -1381,6 +1480,27 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
     setConfirmRemoveIdx(null);
   };
 
+  const moveExercise = (idx, dir) => {
+    setActive(prev => {
+      const arr = [...prev.exercises];
+      const ni = idx + dir;
+      if (ni < 0 || ni >= arr.length) return prev;
+      [arr[idx], arr[ni]] = [arr[ni], arr[idx]];
+      return { ...prev, exercises: arr };
+    });
+    // Também precisa mover o estado de "collapsed" pra acompanhar
+    setCollapsed(prev => {
+      const ni = idx + dir;
+      const k1 = `${active.id}-${idx}`;
+      const k2 = `${active.id}-${ni}`;
+      const next = { ...prev };
+      const v1 = next[k1], v2 = next[k2];
+      next[k1] = v2 || false;
+      next[k2] = v1 || false;
+      return next;
+    });
+  };
+
   const finish = (refUpdates, extras) => {
     const session = {
       ...active,
@@ -1389,20 +1509,61 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
       disposition: extras && extras.disposition != null ? extras.disposition : null,
       intensity: extras && extras.intensity != null ? extras.intensity : null,
     };
+    const applyStructural = !!(extras && extras.applyStructural);
     setData(d => {
       let workouts = d.workouts;
-      if (refUpdates && session.templateId && Object.keys(refUpdates).length) {
+      if (session.templateId && (applyStructural || (refUpdates && Object.keys(refUpdates).length))) {
         workouts = d.workouts.map(w => {
           if (w.id !== session.templateId) return w;
-          const updatedExs = w.exercises.map(we => {
-            const upd = refUpdates[we.exerciseId];
-            if (!upd) return we;
-            const next = { ...we };
-            if (upd.setRefs) next.setRefs = upd.setRefs;
-            if (upd.targetRepsMin != null) next.targetRepsMin = upd.targetRepsMin;
-            if (upd.targetRepsMax != null) next.targetRepsMax = upd.targetRepsMax;
-            return next;
-          });
+          let updatedExs;
+          if (applyStructural) {
+            // Reconstrói os exercícios do template baseado na ordem/composição atual da sessão.
+            // Para cada exercício atual, tenta reaproveitar item do template se já existir;
+            // senão cria novo a partir das séries feitas (ou setRefs default).
+            updatedExs = active.exercises.map(actEx => {
+              const def = data.exercises.find(d=>d.id===actEx.exerciseId);
+              const existing = w.exercises.find(we => we.exerciseId === actEx.exerciseId);
+              const completed = (actEx.sets||[]).filter(s=>s.completed);
+              // Se foi marcado pra atualizar refs, usa as séries feitas como nova ref.
+              const refUpd = refUpdates && refUpdates[actEx.exerciseId];
+              let setRefs;
+              if (refUpd && refUpd.setRefs) {
+                setRefs = refUpd.setRefs;
+              } else if (existing && existing.setRefs) {
+                setRefs = existing.setRefs;
+              } else {
+                // exercício novo no template — usa séries feitas, ou um default
+                if (completed.length) {
+                  setRefs = completed.map(s => def && def.type === 'time'
+                    ? { weight: Number(s.weight)||'', reps: '', time: Number(s.time)||0 }
+                    : { weight: Number(s.weight)||0, reps: Number(s.reps)||0, time: '' });
+                } else {
+                  const ts = actEx.targetSets || 3;
+                  setRefs = [];
+                  for (let i = 0; i < ts; i++) setRefs.push(def && def.type === 'time' ? {weight:'',reps:'',time:30} : {weight:'',reps:10,time:''});
+                }
+              }
+              return {
+                exerciseId: actEx.exerciseId,
+                targetSets: setRefs.length,
+                targetRepsMin: actEx.targetRepsMin || (existing && existing.targetRepsMin) || null,
+                targetRepsMax: actEx.targetRepsMax || (existing && existing.targetRepsMax) || null,
+                setRefs,
+                notes: actEx.notes || (existing && existing.notes) || ''
+              };
+            });
+          } else {
+            // Apenas atualiza setRefs dos exercícios existentes
+            updatedExs = w.exercises.map(we => {
+              const upd = refUpdates && refUpdates[we.exerciseId];
+              if (!upd) return we;
+              const next = { ...we };
+              if (upd.setRefs) next.setRefs = upd.setRefs;
+              if (upd.targetRepsMin != null) next.targetRepsMin = upd.targetRepsMin;
+              if (upd.targetRepsMax != null) next.targetRepsMax = upd.targetRepsMax;
+              return next;
+            });
+          }
           return { ...w, exercises: updatedExs };
         });
       }
@@ -1472,6 +1633,7 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
             <ExerciseBlock
               key={key}
               idx={idx}
+              total={active.exercises.length}
               exLog={exLog}
               exDef={exDef}
               isCollapsed={!!collapsed[key]}
@@ -1484,6 +1646,8 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
               onSubstitute={()=>setSubstitutingIdx(idx)}
               onRemove={()=>setConfirmRemoveIdx(idx)}
               onShowHistory={()=>setHistoryExId(exLog.exerciseId)}
+              onMoveUp={()=>moveExercise(idx, -1)}
+              onMoveDown={()=>moveExercise(idx, 1)}
             />
           );
         })}
@@ -1529,7 +1693,7 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
   );
 };
 
-const ExerciseBlock = ({ idx, exLog, exDef, isCollapsed, onToggleCollapse, onUpdateSet, onToggleSet, onAddSet, onRemoveSet, onUpdateLog, onSubstitute, onRemove, onShowHistory }) => {
+const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse, onUpdateSet, onToggleSet, onAddSet, onRemoveSet, onUpdateLog, onSubstitute, onRemove, onShowHistory, onMoveUp, onMoveDown }) => {
   const [showActions, setShowActions] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
 
@@ -1546,25 +1710,19 @@ const ExerciseBlock = ({ idx, exLog, exDef, isCollapsed, onToggleCollapse, onUpd
 
   const sets = exLog.sets || [];
   const setsDone = sets.filter(s=>s.completed).length;
-  const target = sets.length; // reflete séries reais (alvo + extras - removidas)
+  const target = sets.length;
   const isDone = target > 0 && setsDone >= target;
   const c = muscleColor(exDef.muscle);
   const isTime = exDef.type === 'time';
   const repsRange = (exLog.targetRepsMin && exLog.targetRepsMax) ? `${exLog.targetRepsMin}-${exLog.targetRepsMax}` : null;
-
-  // resumo curto pra mostrar quando colapsado
-  const summary = (() => {
-    if (sets.length === 0) return '—';
-    const refs = sets.slice(0, target);
-    if (isTime) return refs.map(s => `${s.time||'?'}s`).join(' · ');
-    return refs.map(s => `${s.weight===''?'?':s.weight}×${s.reps===''?'?':s.reps}`).join(' · ');
-  })();
+  const DONE_GREEN = '#84cc16';
+  const titleColor = isDone ? DONE_GREEN : '#fff';
 
   return (
     <div className="border-b border-[#1a1a1a]">
-      <div className={`px-4 py-3 border-l-4 ${isDone?'bg-[#0a0a0a]':''}`}
-        style={{ borderLeftColor: c, background: isDone ? '#0a0a0a' : withAlpha(c, 0.06) }}>
-        <div className="flex items-start gap-3">
+      <div className="px-4 py-3 border-l-4"
+        style={{ borderLeftColor: isDone ? DONE_GREEN : c, background: isDone ? withAlpha(DONE_GREEN, 0.06) : withAlpha(c, 0.06) }}>
+        <div className="flex items-start gap-2">
           <button onClick={onToggleCollapse} className="text-[#888] hover:text-white p-1 flex-shrink-0 mt-0.5">
             {isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
           </button>
@@ -1573,17 +1731,31 @@ const ExerciseBlock = ({ idx, exLog, exDef, isCollapsed, onToggleCollapse, onUpd
               <span>{idx+1}.</span>
               <span>{exDef.muscle||'—'}</span>
             </div>
-            <h2 className="font-display text-xl tracking-wider leading-tight break-words">{exDef.name}</h2>
-            <div className="flex gap-2 mt-1.5 flex-wrap">
-              <Pill color={c}>
-                {target} séries
-                {!isTime && repsRange && ` · ${repsRange} reps`}
-              </Pill>
-              {setsDone > 0 && <Pill color={isDone ? '#84cc16' : c}>{setsDone}/{target} ✓</Pill>}
-            </div>
-            {isCollapsed && (
-              <div className="text-[10px] font-mono text-[#888] mt-1.5 truncate">{summary}</div>
+            <h2 className="font-display text-xl tracking-wider leading-tight break-words" style={{ color: titleColor }}>
+              {exDef.name}
+            </h2>
+            {/* Sumário das séries: cada série fica verde quando completa */}
+            {sets.length > 0 && (
+              <div className="text-[11px] font-mono mt-1.5 leading-relaxed">
+                {sets.map((s, si) => {
+                  const txt = isTime
+                    ? `${s.weight===''||s.weight==null?'':s.weight+'kg·'}${s.time===''||s.time==null?'?':s.time}s`
+                    : `${s.weight===''||s.weight==null?'?':s.weight}×${s.reps===''||s.reps==null?'?':s.reps}`;
+                  return (
+                    <span key={si} style={{ color: s.completed ? DONE_GREEN : '#666', marginRight: 8 }}>
+                      {txt}
+                    </span>
+                  );
+                })}
+              </div>
             )}
+          </div>
+          {/* Botões de mover ordem */}
+          <div className="flex flex-col gap-0.5 flex-shrink-0">
+            <button onClick={(e)=>{e.stopPropagation(); onMoveUp && onMoveUp();}} disabled={idx===0}
+              className="text-[#666] disabled:opacity-20 hover:text-[#d4ff00] p-1"><ArrowUp size={12} /></button>
+            <button onClick={(e)=>{e.stopPropagation(); onMoveDown && onMoveDown();}} disabled={idx===total-1}
+              className="text-[#666] disabled:opacity-20 hover:text-[#d4ff00] p-1"><ArrowDown size={12} /></button>
           </div>
           <button onClick={()=>setShowActions(true)} className="text-[#888] hover:text-white p-1 flex-shrink-0">
             <Settings size={16} />
@@ -1717,47 +1889,22 @@ const ExerciseBlock = ({ idx, exLog, exDef, isCollapsed, onToggleCollapse, onUpd
 };
 
 const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
-  const onCellChange = (field, str) => {
-    if (str === '') { onUpdate({ [field]: '' }); return; }
-    if (field === 'reps' || field === 'time') {
-      const n = parseInt(str);
-      onUpdate({ [field]: isNaN(n) ? '' : n });
-    } else {
-      const n = parseFloat(str);
-      onUpdate({ [field]: isNaN(n) ? '' : n });
-    }
-  };
   const completed = !!set.completed;
   const oneRM = exDef.type === 'weight' && set.weight !== '' && set.reps !== '' ? calc1RM(set.weight, set.reps) : 0;
   const isTime = exDef.type === 'time';
-
-  const cellInput = (val, field, step='1') => (
-    <input
-      type="number"
-      inputMode="decimal"
-      step={step}
-      min="0"
-      value={val === '' || val == null ? '' : val}
-      onChange={(e)=>onCellChange(field, e.target.value)}
-      onFocus={(e)=>e.target.select()}
-      placeholder="—"
-      disabled={completed}
-      className="cell-input"
-    />
-  );
 
   return (
     <tr className={completed ? 'completed' : ''}>
       <td className="col-num">{si+1}</td>
       {isTime ? (
         <>
-          <td>{cellInput(set.weight, 'weight', '0.5')}</td>
-          <td>{cellInput(set.time, 'time', '1')}</td>
+          <td><NumStepper value={set.weight} onChange={v=>onUpdate({weight:v})} step={0.5} disabled={completed} /></td>
+          <td><NumStepper value={set.time} onChange={v=>onUpdate({time:v})} step={1} disabled={completed} /></td>
         </>
       ) : (
         <>
-          <td>{cellInput(set.weight, 'weight', '0.5')}</td>
-          <td>{cellInput(set.reps, 'reps', '1')}</td>
+          <td><NumStepper value={set.weight} onChange={v=>onUpdate({weight:v})} step={0.5} disabled={completed} /></td>
+          <td><NumStepper value={set.reps} onChange={v=>onUpdate({reps:v})} step={1} disabled={completed} /></td>
           <td className="cell-1rm">{oneRM > 0 ? oneRM : '—'}</td>
         </>
       )}
@@ -1842,6 +1989,20 @@ const SummaryModal = ({ active, data, onConfirm, onCancel, onUpdateActive }) => 
   const [disposition, setDisposition] = useState(active.disposition || null);
   const [intensity, setIntensity] = useState(active.intensity || null);
 
+  // Detecta mudanças estruturais comparando ordem/composição com snapshot do template
+  const structuralChange = useMemo(() => {
+    if (!active.templateId || !active.originalExerciseIds) return null;
+    const orig = active.originalExerciseIds;
+    const curr = active.exercises.map(e => e.exerciseId);
+    if (orig.length !== curr.length) return { type: orig.length < curr.length ? 'added' : 'removed', orig, curr };
+    for (let i = 0; i < orig.length; i++) {
+      if (orig[i] !== curr[i]) return { type: 'reordered_or_substituted', orig, curr };
+    }
+    return null;
+  }, [active.templateId, active.originalExerciseIds, active.exercises]);
+
+  const [applyStructural, setApplyStructural] = useState(false);
+
   const initialDiff = useMemo(() => {
     if (!active.templateId) return null;
     const tpl = data.workouts.find(w=>w.id===active.templateId);
@@ -1850,8 +2011,9 @@ const SummaryModal = ({ active, data, onConfirm, onCancel, onUpdateActive }) => 
     active.exercises.forEach(e => {
       const def = data.exercises.find(d=>d.id===e.exerciseId);
       const tplEx = tpl.exercises.find(t => t.exerciseId === e.exerciseId);
-      if (!def || !tplEx) return;
-      const tplNorm = normalizeTemplateExercise(tplEx, def);
+      if (!def) return;
+      // Se exercício é novo (não existe no template) ou foi reordenado, ainda mostra diff só de séries
+      const tplNorm = tplEx ? normalizeTemplateExercise(tplEx, def) : { setRefs: [] };
       const refs = tplNorm.setRefs || [];
       const completed = (e.sets||[]).filter(s=>s.completed);
       const diffs = [];
@@ -1885,7 +2047,7 @@ const SummaryModal = ({ active, data, onConfirm, onCancel, onUpdateActive }) => 
   const totalVolume = active.exercises.reduce((acc, e) => acc + (e.sets||[]).filter(s=>s.completed).reduce((a,s)=>a+(Number(s.weight)||0)*(Number(s.reps)||0),0), 0);
 
   const handleConfirm = () => {
-    const extras = { disposition, intensity };
+    const extras = { disposition, intensity, applyStructural };
     if (!active.templateId || !initialDiff || initialDiff.length === 0) {
       onConfirm(null, extras); return;
     }
@@ -1939,6 +2101,29 @@ const SummaryModal = ({ active, data, onConfirm, onCancel, onUpdateActive }) => 
 
       <TextArea label="Observações finais do treino" value={active.sessionNote||''}
         onChange={v=>onUpdateActive({...active, sessionNote:v})} placeholder="Como foi o treino?" rows={3} />
+
+      {/* Mudança estrutural: ordem, adição, remoção, substituição */}
+      {structuralChange && (
+        <div className="border border-[#d4ff00]/40 p-3 space-y-2" style={{ background: withAlpha('#d4ff00', 0.05) }}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-[#d4ff00]">Estrutura do treino alterada</div>
+              <div className="text-[11px] font-mono text-[#aaa] mt-1 leading-relaxed">
+                Você {structuralChange.type === 'added' ? 'adicionou' : structuralChange.type === 'removed' ? 'removeu' : 'reorganizou ou substituiu'} exercícios.
+                Quer fixar essa nova estrutura no modelo do treino?
+              </div>
+            </div>
+            <div className="flex-shrink-0">
+              <CompletedCheckbox checked={applyStructural} onChange={()=>setApplyStructural(v=>!v)} />
+            </div>
+          </div>
+          {applyStructural && (
+            <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00]">
+              ✓ Modelo será atualizado com a nova ordem e composição
+            </div>
+          )}
+        </div>
+      )}
 
       {initialDiff && initialDiff.length > 0 && (
         <div className="space-y-2">
@@ -2056,6 +2241,40 @@ const HistoryView = ({ data, onSelect }) => {
   );
 };
 
+/* Formato legível pra colar em IA. Inclui todos os dados da sessão. */
+const sessionToText = (session, data) => {
+  const lines = [];
+  lines.push(`Treino: ${session.templateName || 'Treino livre'}`);
+  lines.push(`Data: ${formatDateTime(session.date)}`);
+  lines.push(`Duração: ${formatTime(Math.floor((session.duration||0)/1000))}`);
+  if (session.disposition) lines.push(`Disposição: ${session.disposition}/5 (${DISP_LABELS[session.disposition]})`);
+  if (session.intensity) lines.push(`Intensidade: ${session.intensity}/5 (${RPE_LABELS[session.intensity]})`);
+  if (session.sessionNote) lines.push(`Notas gerais: ${session.sessionNote}`);
+  lines.push('');
+  session.exercises.forEach((e, idx) => {
+    const def = data.exercises.find(d=>d.id===e.exerciseId);
+    const name = (def && def.name) || 'Exercício removido';
+    const muscle = (def && def.muscle) || '—';
+    const isTime = def && def.type === 'time';
+    lines.push(`${idx+1}. ${name} (${muscle})`);
+    if (e.targetRepsMin && e.targetRepsMax) lines.push(`   Faixa alvo: ${e.targetRepsMin}-${e.targetRepsMax} reps`);
+    const sets = (e.sets||[]).filter(s=>s.completed);
+    sets.forEach((s, si) => {
+      if (isTime) {
+        const wPart = s.weight ? `${s.weight}kg · ` : '';
+        lines.push(`   Série ${si+1}: ${wPart}${s.time}s`);
+      } else {
+        const oneRM = s.oneRM > 0 ? ` (1RM ${s.oneRM}kg)` : '';
+        lines.push(`   Série ${si+1}: ${s.weight}kg × ${s.reps}${oneRM}`);
+      }
+    });
+    if (e.execScore) lines.push(`   Nota execução: ${e.execScore}/5 (${EXEC_LABELS[e.execScore]})`);
+    if (e.sessionNote) lines.push(`   Anotação: ${e.sessionNote}`);
+    lines.push('');
+  });
+  return lines.join('\n').trim();
+};
+
 const sessionToTSV = (session, data) => {
   // Formato: data \t treino \t exercício \t grupo \t nota_exec \t carga1 \t reps1 \t carga2 \t reps2 \t ...
   // Sem cabeçalho. Todas as séries concluídas (sem limite). Vírgula como separador decimal.
@@ -2089,21 +2308,22 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
   const totalSets = session.exercises.reduce((a,e)=>a+((e.sets&&e.sets.filter(x=>x.completed).length)||0),0);
   const volume = session.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed).reduce((b,x)=>b+(Number(x.weight)||0)*(Number(x.reps)||0),0),0);
 
-  const copyTSV = async () => {
-    const tsv = sessionToTSV(session, data);
+  const copyToClipboard = async (text, msg) => {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(tsv);
-        toast('Copiado para a área de transferência');
+        await navigator.clipboard.writeText(text);
+        toast(msg);
       } else {
         const ta = document.createElement('textarea');
-        ta.value = tsv; ta.style.position='fixed'; ta.style.left='-9999px';
+        ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px';
         document.body.appendChild(ta); ta.focus(); ta.select();
         document.execCommand('copy'); document.body.removeChild(ta);
-        toast('Copiado para a área de transferência');
+        toast(msg);
       }
     } catch (e) { console.error(e); toast('Erro ao copiar', 'error'); }
   };
+  const copyTSV  = () => copyToClipboard(sessionToTSV(session, data), 'Copiado como TSV');
+  const copyText = () => copyToClipboard(sessionToText(session, data), 'Copiado como texto');
 
   return (
     <div className="pb-24">
@@ -2142,8 +2362,9 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
         </div>
       )}
 
-      <div className="px-4 py-3 border-b border-[#1a1a1a]">
-        <Btn variant="ghost" icon={Copy} onClick={copyTSV} full>Copiar para Excel</Btn>
+      <div className="px-4 py-3 border-b border-[#1a1a1a] grid grid-cols-2 gap-2">
+        <Btn variant="ghost" icon={Copy} onClick={copyTSV}>Copiar TSV</Btn>
+        <Btn variant="ghost" icon={Copy} onClick={copyText}>Copiar texto</Btn>
       </div>
 
       {session.sessionNote && (
@@ -2545,7 +2766,27 @@ const ConfigView = ({ data, setData, toast }) => {
     setData(importPreview);
     setConfirmReplace(false); setImportPreview(null);
     bumpSync('fileImport');
-    toast('Dados importados.');
+    toast('Dados substituídos.');
+  };
+  // Merge: adiciona itens novos (id não existente) sem mexer nos existentes.
+  // Para sessões, usa o id (gerado uid). Para exercícios e workouts, idem.
+  const mergeData = (incoming) => {
+    setData(curr => {
+      const existsBy = (arr, id) => arr.some(x => x.id === id);
+      const newExs = (incoming.exercises||[]).filter(e => !existsBy(curr.exercises, e.id));
+      const newWks = (incoming.workouts||[]).filter(w => !existsBy(curr.workouts, w.id));
+      const newSes = (incoming.sessions||[]).filter(s => !existsBy(curr.sessions, s.id));
+      const merged = {
+        ...curr,
+        exercises: [...curr.exercises, ...newExs].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),
+        workouts:  [...curr.workouts,  ...newWks],
+        sessions:  [...curr.sessions,  ...newSes].sort((a,b)=>b.date - a.date),
+      };
+      return merged;
+    });
+    setConfirmReplace(false); setImportPreview(null);
+    bumpSync('fileImport');
+    toast('Dados adicionados.');
   };
   const doImportFromDrive = () => {
     if (drivePreview) setData(drivePreview.payload);
@@ -2667,9 +2908,40 @@ const ConfigView = ({ data, setData, toast }) => {
 
       <DriveSetupModal open={driveSetup} currentClientId={config.clientId} onSave={handleSetClientId} onClose={()=>setDriveSetup(false)} />
 
-      <Confirm open={confirmReplace} title="Substituir todos os dados?"
-        message={importPreview ? `O arquivo contém ${importPreview.exercises.length} exercícios, ${importPreview.workouts.length} treinos e ${importPreview.sessions.length} sessões.` : ''}
-        onConfirm={doImport} onCancel={()=>{setConfirmReplace(false); setImportPreview(null);}} danger />
+      {/* Modal de import com escolha entre substituir e adicionar */}
+      <Modal open={confirmReplace} onClose={()=>{setConfirmReplace(false); setImportPreview(null);}}
+        title="Importar dados"
+        footer={null}>
+        {importPreview && (
+          <>
+            <p className="text-sm text-[#aaa] font-mono leading-relaxed">
+              O arquivo contém <span className="text-white">{importPreview.exercises.length} exercícios</span>,{' '}
+              <span className="text-white">{importPreview.workouts.length} treinos</span> e{' '}
+              <span className="text-white">{importPreview.sessions.length} sessões</span>.
+            </p>
+            <div className="space-y-2 pt-2">
+              <Btn variant="ghost" onClick={mergeData.bind(null, importPreview)} icon={Plus} full>
+                Adicionar aos dados existentes
+              </Btn>
+              <p className="text-[10px] font-mono text-[#666] leading-relaxed">
+                Adiciona apenas itens novos (com IDs diferentes dos atuais). Não modifica dados existentes.
+              </p>
+              <div className="border-t border-[#1a1a1a] my-3"></div>
+              <Btn variant="danger" onClick={doImport} icon={Upload} full>
+                Substituir todos os dados
+              </Btn>
+              <p className="text-[10px] font-mono text-[#666] leading-relaxed">
+                Apaga todos os dados atuais e usa apenas os do arquivo. Não pode ser desfeito.
+              </p>
+              <div className="border-t border-[#1a1a1a] my-3"></div>
+              <Btn variant="ghost" onClick={()=>{setConfirmReplace(false); setImportPreview(null);}} full>
+                Cancelar
+              </Btn>
+            </div>
+          </>
+        )}
+      </Modal>
+
       <Confirm open={confirmReplaceFromDrive} title="Substituir com dados do Drive?"
         message={drivePreview ? `Backup do Drive (modificado em ${new Date(drivePreview.modifiedTime).toLocaleString('pt-BR')}) contém ${drivePreview.payload.exercises.length} exercícios, ${drivePreview.payload.workouts.length} treinos e ${drivePreview.payload.sessions.length} sessões. Os dados locais serão substituídos.` : ''}
         onConfirm={doImportFromDrive} onCancel={()=>{setConfirmReplaceFromDrive(false); setDrivePreview(null);}} danger />
@@ -2778,6 +3050,8 @@ function App() {
       elapsed: 0,
       disposition: null,
       intensity: null,
+      // Snapshot da ordem original pra detectar mudanças de estrutura ao finalizar
+      originalExerciseIds: template.exercises.map(we => we.exerciseId),
       exercises: template.exercises.map(we => {
         const def = data.exercises.find(d=>d.id===we.exerciseId);
         const norm = normalizeTemplateExercise(we, def);
@@ -2799,8 +3073,23 @@ function App() {
   if (active) {
     return (
       <>
-        <ActiveWorkout active={active} setActive={setActive} data={data} setData={setData}
-          onFinish={(session) => { if (session) setFinishedSession(session); }} />
+        {staleSession && (
+          <Modal open={true} onClose={()=>{}} title="Treino aberto há muito tempo"
+            footer={null}>
+            <p className="text-sm font-mono text-[#aaa] leading-relaxed">
+              Você tem um treino "<span className="text-white">{staleSession.templateName}</span>" iniciado em <span className="text-white">{formatDateTime(staleSession.startedAt)}</span>, há mais de 4 horas. O que deseja fazer?
+            </p>
+            <div className="space-y-2 pt-2">
+              <Btn variant="primary" onClick={handleStaleContinue} icon={Play} full>Continuar treino</Btn>
+              <Btn variant="ghost" onClick={handleStaleFinish} icon={Check} full>Finalizar e salvar agora</Btn>
+              <Btn variant="danger" onClick={handleStaleDiscard} icon={Trash2} full>Descartar este treino</Btn>
+            </div>
+          </Modal>
+        )}
+        {!staleSession && (
+          <ActiveWorkout active={active} setActive={setActive} data={data} setData={setData}
+            onFinish={(session) => { if (session) setFinishedSession(session); }} />
+        )}
         {finishedSession && (
           <Modal open={true} onClose={()=>setFinishedSession(null)} title="Treino finalizado"
             footer={<Btn onClick={()=>setFinishedSession(null)} full>OK</Btn>}>
