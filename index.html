@@ -388,7 +388,7 @@ const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v9';
+const APP_VERSION = '2026-04-30-v10';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -540,10 +540,26 @@ const useStorage = () => {
     saveTimer.current = setTimeout(() => saveLS(STORAGE_KEY, data), 200);
     return () => saveTimer.current && clearTimeout(saveTimer.current);
   }, [data]);
+
+  // setActive aceita valor direto OU função updater (estilo React).
+  // CRÍTICO: o valor real (não a função) é salvo no localStorage.
+  // Antes desta correção, passar uma função aqui salvava a string da função em
+  // ACTIVE_KEY, corrompendo o storage e fazendo o app "perder" o treino ao recarregar.
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const setActive = useCallback((s) => {
-    setActiveState(s);
-    if (s) saveLS(ACTIVE_KEY, s);
-    else   localStorage.removeItem(ACTIVE_KEY);
+    if (typeof s === 'function') {
+      const newVal = s(activeRef.current);
+      activeRef.current = newVal;
+      setActiveState(newVal);
+      if (newVal) saveLS(ACTIVE_KEY, newVal);
+      else localStorage.removeItem(ACTIVE_KEY);
+    } else {
+      activeRef.current = s;
+      setActiveState(s);
+      if (s) saveLS(ACTIVE_KEY, s);
+      else localStorage.removeItem(ACTIVE_KEY);
+    }
   }, []);
   return { data, setData, active, setActive };
 };
@@ -1375,30 +1391,29 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
     vibrate(15);
   };
 
-  // Atualiza valor de uma série e propaga em massa quando faz sentido.
+  // Atualiza valor de uma série e propaga em massa apenas para as séries POSTERIORES.
   // Lógica: dado oldValue (valor anterior dessa série naquele campo) e newValue,
-  // varre as outras séries: se TODAS as outras estão vazias OU TODAS são iguais a oldValue
-  // ou a newValue, sincroniza com newValue.
-  // Se tiver QUALQUER outra série com valor diferente de oldValue/newValue/vazio, NÃO propaga.
+  // varre as séries À FRENTE (índice > i): se TODAS estão vazias OU TODAS são iguais
+  // a oldValue, sincroniza com newValue.
+  // Séries anteriores nunca são alteradas — assim o usuário pode personalizar de cima
+  // pra baixo livremente.
   const updateRef = (i, field, newValue) => {
     setIt(prev => {
       const refs = prev.setRefs || [];
       const oldValue = refs[i] ? refs[i][field] : '';
       const isEmpty = (v) => v === '' || v == null;
 
-      // Decide se deve propagar: todas as OUTRAS séries devem ter valor vazio
-      // ou igual a oldValue (o valor que estava antes da edição).
-      const shouldPropagate = refs.every((r, j) => {
-        if (j === i) return true;
+      // Apenas séries posteriores são consideradas pra propagação.
+      const laterRefs = refs.slice(i + 1);
+      const shouldPropagate = laterRefs.every(r => {
         const v = r[field];
         if (isEmpty(v)) return true;
-        // Comparação numérica robusta (evita falso positivo entre "" e 0)
         return Number(v) === Number(oldValue);
       });
 
       const next = refs.map((r, j) => {
         if (j === i) return { ...r, [field]: newValue };
-        if (shouldPropagate) return { ...r, [field]: newValue };
+        if (j > i && shouldPropagate) return { ...r, [field]: newValue };
         return r;
       });
       return { ...prev, setRefs: next };
@@ -1426,7 +1441,7 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
           Séries de referência ({(it.setRefs||[]).length})
         </div>
         <p className="text-[10px] font-mono text-[#666] mb-3 leading-relaxed">
-          Estes valores são pré-preenchidos no início do treino. Ao editar uma série, os valores serão propagados para as demais se elas estiverem vazias ou idênticas ao valor anterior.
+          Estes valores são pré-preenchidos no início do treino. Ao editar uma série, os valores são propagados apenas para as séries seguintes — e somente se elas estiverem vazias ou todas idênticas ao valor anterior.
         </p>
         <table className="set-table">
           <thead>
