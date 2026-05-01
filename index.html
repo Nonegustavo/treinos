@@ -355,6 +355,7 @@ const Check = mkI('<path d="M20 6 9 17l-5-5"/>');
 const Edit3 = mkI('<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/>');
 const Trash2 = mkI('<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>');
 const Play = mkI('<polygon points="5 3 19 12 5 21 5 3"/>');
+const Pause = mkI('<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>');
 const ChevronRight = mkI('<path d="m9 18 6-6-6-6"/>');
 const ChevronLeft = mkI('<path d="m15 18-6-6 6-6"/>');
 const ChevronDown = mkI('<path d="m6 9 6 6 6-6"/>');
@@ -386,7 +387,7 @@ const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v7';
+const APP_VERSION = '2026-04-30-v8';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -439,6 +440,24 @@ const WORKOUT_COLORS = [
 const RPE_LABELS = ['', 'Muito leve', 'Leve', 'Moderado', 'Difícil', 'Muito difícil'];
 const DISP_LABELS = ['', 'Muito fraco', 'Fraco', 'Normal', 'Forte', 'Muito forte'];
 const EXEC_LABELS = ['', 'Péssimo', 'Ruim', 'Bom', 'Ótimo', 'Perfeito'];
+
+// Paletas de cores pras escalas 1-5. Index 0 não é usado (escala começa em 1).
+// Execução e disposição: ruim→bom = vermelho→ciano
+// Intensidade: leve→difícil = ciano→vermelho (invertido)
+const EXEC_COLORS      = ['', '#ef4444', '#f97316', '#fbbf24', '#84cc16', '#06b6d4'];
+const DISP_COLORS      = ['', '#ef4444', '#f97316', '#fbbf24', '#84cc16', '#06b6d4'];
+const INTENSITY_COLORS = ['', '#06b6d4', '#84cc16', '#fbbf24', '#f97316', '#ef4444'];
+
+// Vibração tátil curta para feedback de toque. Falha silenciosa em iOS Safari.
+const vibrate = (ms = 20) => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+
+// Formatação de carga: 0 ou vazio = "peso corporal". Usado em históricos e relatórios.
+const formatLoadReps = (w, r) => {
+  const wn = Number(w) || 0;
+  const rn = Number(r) || 0;
+  if (wn <= 0) return `peso corporal × ${rn || '?'}`;
+  return `${wn}kg × ${rn || '?'}`;
+};
 
 const uid = () => Math.random().toString(36).slice(2,11) + Date.now().toString(36).slice(-4);
 
@@ -639,8 +658,14 @@ const Btn = ({ children, onClick, variant='primary', size='md', icon:IconC, type
     dark:    'bg-[#0d0d0d] text-white border border-[#1a1a1a] hover:border-[#333]',
     accent:  'bg-transparent text-[#d4ff00] border border-[#d4ff00]/40 hover:bg-[#d4ff00]/10',
   };
+  // Wrapper de click que aciona vibração tátil leve antes do handler.
+  const handleClick = (e) => {
+    if (disabled) return;
+    vibrate(15);
+    if (onClick) onClick(e);
+  };
   return (
-    <button type={type} onClick={onClick} disabled={disabled} style={style}
+    <button type={type} onClick={handleClick} disabled={disabled} style={style}
       className={`${sizes[size]} ${variants[variant]} ${full?'w-full':''} ${disabled?'opacity-40 cursor-not-allowed':''} font-mono uppercase tracking-wider font-medium transition-all duration-150 active:scale-[0.98] flex items-center justify-center gap-2`}>
       {IconC && <IconC size={size==='sm'?14:16} strokeWidth={2.2} />}
       {children}
@@ -708,24 +733,31 @@ const Toggle = ({ label, hint, value, onChange }) => (
   </label>
 );
 
-const ScaleSelector = ({ value, onChange, labels }) => (
-  <div>
-    <div className="grid grid-cols-5 gap-1.5">
-      {[1,2,3,4,5].map(n => {
-        const sel = value === n;
-        return (
-          <button key={n} type="button" onClick={()=>onChange(sel?null:n)}
-            className={`h-11 border font-display text-2xl transition-colors flex items-center justify-center ${sel?'border-[#d4ff00] text-[#d4ff00] bg-[#d4ff00]/10':'border-[#1a1a1a] text-[#666] hover:border-[#333]'}`}>
-            {n}
-          </button>
-        );
-      })}
+const ScaleSelector = ({ value, onChange, labels, colors }) => {
+  const accent = colors && value ? colors[value] : '#d4ff00';
+  return (
+    <div>
+      <div className="grid grid-cols-5 gap-1.5">
+        {[1,2,3,4,5].map(n => {
+          const sel = value === n;
+          const c = colors ? colors[n] : '#d4ff00';
+          return (
+            <button key={n} type="button" onClick={()=>{ vibrate(15); onChange(sel?null:n); }}
+              className="h-11 border font-display text-2xl transition-colors flex items-center justify-center"
+              style={sel
+                ? { borderColor: c, color: c, background: c + '1a' }
+                : { borderColor: '#1a1a1a', color: '#666', background: 'transparent' }}>
+              {n}
+            </button>
+          );
+        })}
+      </div>
+      <div className="text-[10px] font-mono text-center mt-2 tracking-widest uppercase" style={{ color: value ? accent : '#444', minHeight: '12px' }}>
+        {value ? labels[value] : '—'}
+      </div>
     </div>
-    <div className="text-[10px] font-mono text-center mt-2 tracking-widest uppercase" style={{ color: value ? '#d4ff00' : '#444', minHeight: '12px' }}>
-      {value ? labels[value] : '—'}
-    </div>
-  </div>
-);
+  );
+};
 
 const EmptyState = ({ icon:IconC, title, hint, action }) => (
   <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
@@ -957,15 +989,41 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, onDelete }) => {
 };
 
 /* WORKOUTS */
-const WorkoutsView = ({ data, onStart, onEdit }) => {
+const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+const WEEKDAY_LABELS_FULL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+
+const WorkoutsView = ({ data, onStart, onEdit, pausedSession, onResume }) => {
   const [showInactive, setShowInactive] = useState(false);
-  const activeWorkouts = data.workouts.filter(w => !w.inactive);
+  // Ordena ativos: primeiro os que têm dias atribuídos (pelo menor dia), depois os sem dia (ordem de cadastro).
+  // Domingo=0 vem antes.
+  const activeWorkouts = useMemo(() => {
+    const list = data.workouts.filter(w => !w.inactive);
+    return [...list].sort((a, b) => {
+      const da = (a.weekdays && a.weekdays.length) ? Math.min(...a.weekdays) : 99;
+      const db = (b.weekdays && b.weekdays.length) ? Math.min(...b.weekdays) : 99;
+      if (da !== db) return da - db;
+      return (a.name||'').localeCompare(b.name||'', 'pt-BR');
+    });
+  }, [data.workouts]);
   const inactiveWorkouts = data.workouts.filter(w => w.inactive);
+
+  // Total agregado de séries por grupo muscular somando todos os ativos.
+  const aggregatedMuscleSets = useMemo(() => {
+    const m = {};
+    activeWorkouts.forEach(w => {
+      w.exercises.forEach(we => {
+        const ex = data.exercises.find(e=>e.id===we.exerciseId);
+        const muscle = (ex && ex.muscle) || 'Sem grupo';
+        const sets = (we.setRefs || []).length || we.targetSets || 0;
+        m[muscle] = (m[muscle] || 0) + sets;
+      });
+    });
+    return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+  }, [activeWorkouts, data.exercises]);
 
   const renderCard = (w, opts={}) => {
     const compact = !!opts.compact;
     const lastSession = data.sessions.filter(s=>s.templateId===w.id).sort((a,b)=>b.date-a.date)[0];
-    // Conta séries (não exercícios) por grupo muscular
     const muscleSetCounts = {};
     w.exercises.forEach(we => {
       const ex = data.exercises.find(e=>e.id===we.exerciseId);
@@ -976,6 +1034,9 @@ const WorkoutsView = ({ data, onStart, onEdit }) => {
     const muscleEntries = Object.entries(muscleSetCounts).sort((a,b)=>b[1]-a[1]);
     const totalSets = muscleEntries.reduce((a,[,n])=>a+n,0);
     const wColor = w.color || WORKOUT_COLORS[0].value;
+    const weekdayBadges = (w.weekdays && w.weekdays.length)
+      ? [...w.weekdays].sort((a,b)=>a-b).map(d => WEEKDAY_LABELS[d]).join(' · ')
+      : null;
     if (compact) {
       return (
         <button key={w.id} onClick={()=>onEdit(w)}
@@ -992,11 +1053,13 @@ const WorkoutsView = ({ data, onStart, onEdit }) => {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex-1 min-w-0">
             <h3 className="font-display text-2xl tracking-wider leading-none" style={{ color: wColor }}>{w.name||'Sem nome'}</h3>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mt-1.5">
-              {totalSets} séries · {lastSession ? `Último: ${formatShort(lastSession.date)}` : 'Nunca executado'}
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mt-1.5 flex flex-wrap gap-2">
+              {weekdayBadges && <span style={{ color: wColor }}>{weekdayBadges}</span>}
+              <span>{totalSets} séries</span>
+              <span>{lastSession ? `Último: ${formatShort(lastSession.date)}` : 'Nunca executado'}</span>
             </div>
           </div>
-          <button onClick={()=>onEdit(w)} className="p-2 text-[#888] hover:text-white"><Edit3 size={16} /></button>
+          <button onClick={()=>{ vibrate(15); onEdit(w); }} className="p-2 text-[#888] hover:text-white"><Edit3 size={16} /></button>
         </div>
         {muscleEntries.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
@@ -1005,8 +1068,7 @@ const WorkoutsView = ({ data, onStart, onEdit }) => {
             ))}
           </div>
         )}
-        {/* Botão iniciar usa cor do treino como fundo */}
-        <button type="button" onClick={()=>onStart(w)} disabled={w.exercises.length === 0}
+        <button type="button" onClick={()=>{ vibrate(20); onStart(w); }} disabled={w.exercises.length === 0}
           className={`w-full px-5 py-4 text-base font-mono uppercase tracking-wider font-medium transition-all duration-150 active:scale-[0.98] flex items-center justify-center gap-2 ${w.exercises.length === 0 ? 'opacity-40 cursor-not-allowed' : 'hover:opacity-90'}`}
           style={{ background: wColor, color: '#000' }}>
           <Play size={16} strokeWidth={2.4} />
@@ -1019,11 +1081,39 @@ const WorkoutsView = ({ data, onStart, onEdit }) => {
   return (
     <div className="pb-24">
       <Header title="Treinos" subtitle={`${activeWorkouts.length} ativos${inactiveWorkouts.length?` · ${inactiveWorkouts.length} inativos`:''}`}
-        right={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value})} size="sm">Novo</Btn>} />
+        right={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value, weekdays:[]})} size="sm">Novo</Btn>} />
+
+      {/* Banner de treino pausado em segundo plano */}
+      {pausedSession && (
+        <div className="px-4 py-3 border-b border-[#d4ff00]/40 bg-[#d4ff00]/10 flex items-center gap-3">
+          <Play size={18} className="text-[#d4ff00] flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-sm text-[#d4ff00] truncate">{pausedSession.templateName}</div>
+            <div className="text-[10px] font-mono text-[#888] uppercase tracking-widest">Treino pausado · {formatTime(Math.floor((Date.now() - pausedSession.startedAt) / 1000))}</div>
+          </div>
+          <button onClick={()=>{ vibrate(15); onResume(); }}
+            className="px-3 py-2 bg-[#d4ff00] text-black font-mono text-xs uppercase tracking-wider font-medium active:scale-95">
+            Continuar
+          </button>
+        </div>
+      )}
+
+      {/* Resumo agregado de séries por grupo */}
+      {aggregatedMuscleSets.length > 0 && activeWorkouts.length > 1 && (
+        <div className="px-4 py-3 border-b border-[#1a1a1a]">
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-2">Volume semanal por grupo</div>
+          <div className="flex flex-wrap gap-1.5">
+            {aggregatedMuscleSets.map(([m, count]) => (
+              <Pill key={m} color={muscleColor(m)}>{m} · {count}</Pill>
+            ))}
+          </div>
+        </div>
+      )}
+
       {data.workouts.length === 0 ? (
         <EmptyState icon={Activity} title="Nenhum treino"
           hint="Crie modelos de treino combinando seus exercícios."
-          action={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value})}>Criar primeiro</Btn>} />
+          action={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value, weekdays:[]})}>Criar primeiro</Btn>} />
       ) : (
         <>
           <div className="divide-y divide-[#0d0d0d]">
@@ -1031,7 +1121,7 @@ const WorkoutsView = ({ data, onStart, onEdit }) => {
           </div>
           {inactiveWorkouts.length > 0 && (
             <div className="border-t border-[#1a1a1a] mt-4">
-              <button onClick={()=>setShowInactive(s=>!s)}
+              <button onClick={()=>{ vibrate(15); setShowInactive(s=>!s); }}
                 className="w-full px-4 py-3 flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-[#666] hover:text-[#aaa]">
                 <span>Inativos ({inactiveWorkouts.length})</span>
                 {showInactive ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -1110,15 +1200,41 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
           <Input label="Nome" value={w.name} onChange={v=>setW({...w, name:v})} placeholder="Ex: Treino A — Push" />
           <div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Cor do treino</div>
-            <div className="grid grid-cols-6 gap-2">
+            {/* Botões de cor menores, todos em uma linha */}
+            <div className="flex gap-1.5 flex-wrap">
               {WORKOUT_COLORS.map(c => {
                 const sel = w.color === c.value;
                 return (
-                  <button key={c.id} type="button" onClick={()=>setW({...w, color: c.value})}
+                  <button key={c.id} type="button" onClick={()=>{ vibrate(15); setW({...w, color: c.value}); }}
                     title={c.label}
-                    className="h-10 border transition-all relative"
-                    style={{ background: c.value, borderColor: sel ? '#fff' : 'transparent', borderWidth: sel ? 2 : 1 }}>
-                    {sel && <Check size={14} strokeWidth={3} className="text-black absolute" style={{top:'50%', left:'50%', transform:'translate(-50%,-50%)'}} />}
+                    className="transition-all relative flex-shrink-0"
+                    style={{ width: 24, height: 24, background: c.value, borderRadius: 4, borderWidth: sel ? 2 : 0, borderStyle: 'solid', borderColor: '#fff' }}>
+                    {sel && <Check size={12} strokeWidth={3} className="text-black absolute" style={{top:'50%', left:'50%', transform:'translate(-50%,-50%)'}} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {/* Dias da semana (multi-seleção) */}
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Dias da semana</div>
+            <div className="grid grid-cols-7 gap-1">
+              {WEEKDAY_LABELS.map((label, idx) => {
+                const sel = (w.weekdays || []).includes(idx);
+                return (
+                  <button key={idx} type="button"
+                    onClick={()=>{
+                      vibrate(15);
+                      setW(prev => {
+                        const days = prev.weekdays || [];
+                        return { ...prev, weekdays: sel ? days.filter(d=>d!==idx) : [...days, idx].sort((a,b)=>a-b) };
+                      });
+                    }}
+                    className="h-10 border font-mono text-xs uppercase tracking-wider transition-colors"
+                    style={sel
+                      ? { borderColor: '#d4ff00', color: '#d4ff00', background: 'rgba(212,255,0,0.1)' }
+                      : { borderColor: '#1a1a1a', color: '#666' }}>
+                    {label}
                   </button>
                 );
               })}
@@ -1139,20 +1255,26 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
               const c = muscleColor(ex && ex.muscle);
               const refsCount = (we.setRefs||[]).length;
               return (
-                <div key={idx} className="px-4 py-3 flex items-center gap-3 border-l-4" style={{ borderLeftColor: c, background: withAlpha(c, 0.04) }}>
+                <div key={idx} className="px-4 py-3 flex items-center gap-3 border-l-4" style={{ borderLeftColor: c }}>
                   <div className="flex flex-col gap-0.5">
-                    <button onClick={()=>moveEx(idx,-1)} disabled={idx===0} className="text-[#666] disabled:opacity-30 p-1"><ArrowUp size={12} /></button>
-                    <button onClick={()=>moveEx(idx, 1)} disabled={idx===w.exercises.length-1} className="text-[#666] disabled:opacity-30 p-1"><ArrowDown size={12} /></button>
+                    <button onClick={()=>{ vibrate(15); moveEx(idx,-1); }} disabled={idx===0} className="text-[#666] disabled:opacity-30 p-1"><ArrowUp size={12} /></button>
+                    <button onClick={()=>{ vibrate(15); moveEx(idx, 1); }} disabled={idx===w.exercises.length-1} className="text-[#666] disabled:opacity-30 p-1"><ArrowDown size={12} /></button>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-mono text-sm text-white truncate">{ex ? ex.name : '? Exercício removido'}</div>
-                    <div className="text-[10px] font-mono text-[#666] mt-0.5">
-                      {refsCount}× {ex && ex.type==='time'
-                        ? ((we.setRefs||[]).map(s => s.time||'?').join('/') + 's')
-                        : `${we.targetRepsMin || '?'}-${we.targetRepsMax || '?'} reps`}
+                    {/* Grupo muscular agora aparece junto com séries/reps */}
+                    <div className="text-[10px] font-mono mt-0.5 flex items-center gap-2 flex-wrap">
+                      {ex && ex.muscle && (
+                        <span style={{ color: c }}>{ex.muscle}</span>
+                      )}
+                      <span className="text-[#666]">
+                        {refsCount}× {ex && ex.type==='time'
+                          ? ((we.setRefs||[]).map(s => s.time||'?').join('/') + 's')
+                          : `${we.targetRepsMin || '?'}-${we.targetRepsMax || '?'} reps`}
+                      </span>
                     </div>
                   </div>
-                  <button onClick={()=>setEditingExIdx(idx)} className="text-[#888] hover:text-white p-2"><Edit3 size={14} /></button>
+                  <button onClick={()=>{ vibrate(15); setEditingExIdx(idx); }} className="text-[#888] hover:text-white p-2"><Edit3 size={14} /></button>
                 </div>
               );
             })}
@@ -1311,10 +1433,11 @@ const buildInitialSets = (exDef, exTemplateItem) => {
 };
 
 /* ACTIVE WORKOUT */
-const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
+const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) => {
   const [showSummary, setShowSummary] = useState(false);
   const [showWorkoutNotes, setShowWorkoutNotes] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
+  const [confirmPause, setConfirmPause] = useState(false);
   const [confirmIncomplete, setConfirmIncomplete] = useState(false);
   const [addingEx, setAddingEx] = useState(false);
   const [substitutingIdx, setSubstitutingIdx] = useState(null);
@@ -1324,6 +1447,23 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
 
   // Salva o estado de collapse por exercício/sessão
   useEffect(() => { saveLS(COLLAPSED_KEY, collapsed); }, [collapsed]);
+
+  // Ao iniciar uma nova sessão (id ainda sem entradas no collapsed), colapsa tudo exceto o primeiro.
+  useEffect(() => {
+    if (!active) return;
+    const firstKey = `${active.id}-0`;
+    // Se ainda não há nenhuma entrada para essa sessão, é um treino "fresco"
+    const hasAnyEntry = active.exercises.some((_, idx) => `${active.id}-${idx}` in collapsed);
+    if (!hasAnyEntry) {
+      setCollapsed(prev => {
+        const next = { ...prev };
+        active.exercises.forEach((_, idx) => {
+          next[`${active.id}-${idx}`] = idx !== 0; // colapsa todos menos o primeiro
+        });
+        return next;
+      });
+    }
+  }, [active && active.id]);
 
   useEffect(() => {
     const t = setInterval(() => setActive(prev => prev ? {...prev, elapsed: Date.now() - prev.startedAt} : prev), 1000);
@@ -1399,20 +1539,39 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
 
   const toggleSetCompleted = (idx, si) => {
     const exLog = active.exercises[idx];
-    const set = (exLog.sets||[])[si];
+    const sets = exLog.sets || [];
+    const set = sets[si];
     if (!set) return;
     const exDef = data.exercises.find(d=>d.id===exLog.exerciseId);
+
+    // Helper que valida se uma série tem dados suficientes pra ser marcada como feita.
+    const isValidForCompletion = (s) => {
+      const w = parseFloat(s.weight);
+      const r = parseInt(s.reps);
+      const t = parseInt(s.time);
+      if (exDef.type === 'time') return t > 0;
+      // weight: aceita carga 0 (peso corporal), exige reps válida
+      return !isNaN(r) && r > 0;
+    };
+
     if (set.completed) {
+      // Desmarca apenas a série clicada.
       updateSet(idx, si, { completed: false });
     } else {
-      const w = parseFloat(set.weight);
-      const r = parseInt(set.reps);
-      const t = parseInt(set.time);
-      if (exDef.type === 'time' && (!t || t <= 0)) return;
-      if (exDef.type === 'weight' && (isNaN(r) || r <= 0)) return;
-      const oneRM = exDef.type === 'weight' ? calc1RM(set.weight, set.reps) : 0;
-      updateSet(idx, si, { completed: true, oneRM, timestamp: Date.now() });
-      try{ navigator.vibrate && navigator.vibrate(80); } catch(e){}
+      if (!isValidForCompletion(set)) return;
+      // Marca esta série E todas as anteriores que ainda não foram marcadas e que tenham dados válidos.
+      const newSets = sets.map((s, j) => {
+        if (j > si) return s;
+        if (s.completed) return s;
+        if (!isValidForCompletion(s)) return s;
+        const oneRM = exDef.type === 'weight' ? calc1RM(s.weight, s.reps) : 0;
+        return { ...s, completed: true, oneRM, timestamp: Date.now() };
+      });
+      setActive(prev => ({
+        ...prev,
+        exercises: prev.exercises.map((e, i) => i === idx ? { ...e, sets: newSets } : e)
+      }));
+      vibrate(80);
     }
   };
 
@@ -1604,13 +1763,16 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
   return (
     <div className="fixed inset-0 z-40 bg-black flex flex-col">
       <div className="border-b border-[#1a1a1a] sticky top-0 bg-black z-30">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <button onClick={()=>setConfirmExit(true)} className="text-[#888] p-1 -ml-1"><X size={20} /></button>
-          <div className="text-center flex-1 min-w-0 mx-2">
+        <div className="px-4 py-3 flex items-center justify-between gap-2">
+          <button onClick={()=>{ vibrate(15); setConfirmExit(true); }} className="text-[#888] p-1 -ml-1" title="Sair (descarta)"><X size={20} /></button>
+          <div className="text-center flex-1 min-w-0">
             <div className="font-display text-lg tracking-wider leading-none truncate">{active.templateName}</div>
             <div className="text-[10px] font-mono text-[#666] tracking-widest mt-0.5">{formatTime(elapsed)} · {progress.done}/{progress.total} séries</div>
           </div>
-          <button onClick={tryFinish} className="text-[#d4ff00] p-1"><Check size={22} /></button>
+          {onPause && (
+            <button onClick={()=>{ vibrate(15); setConfirmPause(true); }} className="text-[#888] p-1" title="Pausar treino"><Pause size={20} /></button>
+          )}
+          <button onClick={tryFinish} className="text-[#d4ff00] p-1" title="Finalizar"><Check size={22} /></button>
         </div>
         {/* Barra de progresso. Largura proporcional ao avanço total. */}
         <div className="h-1 bg-[#0a0a0a] relative overflow-hidden">
@@ -1689,6 +1851,12 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
       <Confirm open={confirmExit} title="Sair do treino?"
         message="O treino em andamento será descartado e não vai pro histórico."
         onConfirm={()=>{setActive(null); onFinish(null);}} onCancel={()=>setConfirmExit(false)} danger />
+
+      <Confirm open={confirmPause} title="Pausar treino?"
+        message="O treino será pausado e ficará disponível para retomar na tela de Treinos. Nenhum dado será perdido."
+        onConfirm={()=>{ setConfirmPause(false); onPause && onPause(); }}
+        onCancel={()=>setConfirmPause(false)}
+        confirmLabel="Pausar" />
     </div>
   );
 };
@@ -1696,6 +1864,9 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish }) => {
 const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse, onUpdateSet, onToggleSet, onAddSet, onRemoveSet, onUpdateLog, onSubstitute, onRemove, onShowHistory, onMoveUp, onMoveDown }) => {
   const [showActions, setShowActions] = useState(false);
   const [showNotes, setShowNotes] = useState(false);
+  // Anotação rápida: começa fechada se vazia, abre ao clicar e foca; fecha no blur se vazia.
+  const [noteOpen, setNoteOpen] = useState(false);
+  const noteRef = useRef(null);
 
   if (!exDef) {
     return (
@@ -1718,10 +1889,24 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
   const DONE_GREEN = '#84cc16';
   const titleColor = isDone ? DONE_GREEN : '#fff';
 
+  // Quando exercício está concluído, fundo levemente verde; senão, fundo neutro (sem cor do grupo).
+  // A cor do grupo aparece apenas na borda lateral e no label do grupo.
+  const headerBg = isDone ? withAlpha(DONE_GREEN, 0.06) : 'transparent';
+
+  const openNote = () => {
+    setNoteOpen(true);
+    setTimeout(() => { if (noteRef.current) noteRef.current.focus(); }, 0);
+  };
+  const handleNoteBlur = () => {
+    if (!exLog.sessionNote || exLog.sessionNote.trim() === '') {
+      setNoteOpen(false);
+    }
+  };
+
   return (
     <div className="border-b border-[#1a1a1a]">
       <div className="px-4 py-3 border-l-4"
-        style={{ borderLeftColor: isDone ? DONE_GREEN : c, background: isDone ? withAlpha(DONE_GREEN, 0.06) : withAlpha(c, 0.06) }}>
+        style={{ borderLeftColor: isDone ? DONE_GREEN : c, background: headerBg }}>
         <div className="flex items-start gap-2">
           <button onClick={onToggleCollapse} className="text-[#888] hover:text-white p-1 flex-shrink-0 mt-0.5">
             {isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
@@ -1734,13 +1919,15 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
             <h2 className="font-display text-xl tracking-wider leading-tight break-words" style={{ color: titleColor }}>
               {exDef.name}
             </h2>
-            {/* Sumário das séries: cada série fica verde quando completa */}
-            {sets.length > 0 && (
+            {/* Sumário das séries: aparece SÓ quando colapsado (quando expandido a tabela já mostra tudo) */}
+            {isCollapsed && sets.length > 0 && (
               <div className="text-[11px] font-mono mt-1.5 leading-relaxed">
                 {sets.map((s, si) => {
                   const txt = isTime
-                    ? `${s.weight===''||s.weight==null?'':s.weight+'kg·'}${s.time===''||s.time==null?'?':s.time}s`
-                    : `${s.weight===''||s.weight==null?'?':s.weight}×${s.reps===''||s.reps==null?'?':s.reps}`;
+                    ? `${s.weight===''||s.weight==null||Number(s.weight)===0?'':s.weight+'kg·'}${s.time===''||s.time==null?'?':s.time}s`
+                    : (Number(s.weight)>0
+                        ? `${s.weight}×${s.reps===''||s.reps==null?'?':s.reps}`
+                        : `pc×${s.reps===''||s.reps==null?'?':s.reps}`);
                   return (
                     <span key={si} style={{ color: s.completed ? DONE_GREEN : '#666', marginRight: 8 }}>
                       {txt}
@@ -1752,26 +1939,74 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
           </div>
           {/* Botões de mover ordem */}
           <div className="flex flex-col gap-0.5 flex-shrink-0">
-            <button onClick={(e)=>{e.stopPropagation(); onMoveUp && onMoveUp();}} disabled={idx===0}
+            <button onClick={(e)=>{e.stopPropagation(); vibrate(15); onMoveUp && onMoveUp();}} disabled={idx===0}
               className="text-[#666] disabled:opacity-20 hover:text-[#d4ff00] p-1"><ArrowUp size={12} /></button>
-            <button onClick={(e)=>{e.stopPropagation(); onMoveDown && onMoveDown();}} disabled={idx===total-1}
+            <button onClick={(e)=>{e.stopPropagation(); vibrate(15); onMoveDown && onMoveDown();}} disabled={idx===total-1}
               className="text-[#666] disabled:opacity-20 hover:text-[#d4ff00] p-1"><ArrowDown size={12} /></button>
           </div>
-          <button onClick={()=>setShowActions(true)} className="text-[#888] hover:text-white p-1 flex-shrink-0">
+          <button onClick={()=>{ vibrate(15); setShowActions(true); }} className="text-[#888] hover:text-white p-1 flex-shrink-0">
             <Settings size={16} />
           </button>
         </div>
-
-        {!isCollapsed && (exDef.notes || exLog.notes) && (
-          <button onClick={()=>setShowNotes(true)} className="mt-3 w-full bg-[#0a0a0a] border-l-2 border-[#d4ff00] px-3 py-2 text-left">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00] mb-1">Observações · toque</div>
-            <p className="text-[11px] font-mono text-[#aaa] leading-relaxed truncate">{exDef.notes || exLog.notes}</p>
-          </button>
-        )}
       </div>
 
       {!isCollapsed && (
         <>
+          {/* Observações fixas (em cor neutra, não destaca durante o treino) */}
+          {(exDef.notes || exLog.notes) && (
+            <button onClick={()=>setShowNotes(true)}
+              className="w-full px-4 py-2 text-left bg-[#050505] border-b border-[#0d0d0d] hover:bg-[#0a0a0a]">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-0.5">Observações · toque</div>
+              <p className="text-[11px] font-mono text-[#888] leading-relaxed truncate">{exDef.notes || exLog.notes}</p>
+            </button>
+          )}
+
+          {/* Nota de execução ACIMA das séries */}
+          <div className="px-4 py-3 border-b border-[#0d0d0d]">
+            <div className="text-[9px] font-mono uppercase tracking-widest mb-2 text-center"
+              style={{ color: exLog.execScore ? EXEC_COLORS[exLog.execScore] : '#666' }}>
+              Execução {exLog.execScore ? <span className="ml-1">· {EXEC_LABELS[exLog.execScore]}</span> : null}
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {[1,2,3,4,5].map(n => {
+                const sel = exLog.execScore === n;
+                const col = EXEC_COLORS[n];
+                return (
+                  <button key={n} type="button"
+                    onClick={()=>{ vibrate(15); onUpdateLog({ execScore: sel ? null : n }); }}
+                    className="h-10 border font-display text-xl transition-colors flex items-center justify-center"
+                    style={sel
+                      ? { borderColor: col, color: col, background: col + '1a' }
+                      : { borderColor: '#1a1a1a', color: '#666' }}>
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Anotação rápida ACIMA das séries — começa oculta, abre ao clicar */}
+          <div className="px-4 py-2 border-b border-[#0d0d0d]">
+            {!noteOpen && !exLog.sessionNote ? (
+              <button type="button" onClick={openNote}
+                className="w-full text-left text-[10px] font-mono uppercase tracking-widest text-[#666] hover:text-[#d4ff00] py-1">
+                + Anotação rápida
+              </button>
+            ) : (
+              <>
+                <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Anotação rápida</div>
+                <textarea
+                  ref={noteRef}
+                  value={exLog.sessionNote || ''}
+                  onChange={(e)=>onUpdateLog({ sessionNote: e.target.value })}
+                  onBlur={handleNoteBlur}
+                  placeholder="Ex: 'última série caiu', 'ombro incomodando'..."
+                  rows={2}
+                  className="w-full bg-black border border-[#1a1a1a] focus:border-[#d4ff00] outline-none px-3 py-2 text-white font-mono text-xs placeholder:text-[#444] resize-none transition-colors" />
+              </>
+            )}
+          </div>
+
           <table className="set-table">
             <thead>
               <tr>
@@ -1789,7 +2024,6 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
                   </>
                 )}
                 <th className="col-check">Feita</th>
-                <th className="col-action"></th>
               </tr>
             </thead>
             <tbody>
@@ -1803,40 +2037,10 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
           </table>
 
           <div className="px-4 py-2 border-b border-[#0d0d0d] bg-[#050505]">
-            <button onClick={onAddSet}
+            <button onClick={()=>{ vibrate(15); onAddSet(); }}
               className="w-full py-2 text-[10px] font-mono uppercase tracking-widest text-[#666] border border-dashed border-[#1a1a1a] hover:border-[#333] hover:text-[#888] transition-colors flex items-center justify-center gap-1.5">
               <Plus size={12} /> Adicionar série extra
             </button>
-          </div>
-
-          {/* Nota de execução do exercício, inline (sem modal) */}
-          <div className="px-4 py-3 border-b border-[#0d0d0d]">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-2 text-center">
-              Nota de execução {exLog.execScore ? <span className="text-[#d4ff00] ml-1">· {EXEC_LABELS[exLog.execScore]}</span> : null}
-            </div>
-            <div className="grid grid-cols-5 gap-1.5">
-              {[1,2,3,4,5].map(n => {
-                const sel = exLog.execScore === n;
-                return (
-                  <button key={n} type="button"
-                    onClick={()=>onUpdateLog({ execScore: sel ? null : n })}
-                    className={`h-10 border font-display text-xl transition-colors flex items-center justify-center ${sel?'border-[#d4ff00] text-[#d4ff00] bg-[#d4ff00]/10':'border-[#1a1a1a] text-[#666] hover:border-[#333]'}`}>
-                    {n}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Anotação rápida inline */}
-          <div className="px-4 py-3 border-b border-[#0d0d0d]">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Anotação rápida</div>
-            <textarea
-              value={exLog.sessionNote || ''}
-              onChange={(e)=>onUpdateLog({ sessionNote: e.target.value })}
-              placeholder="Ex: 'última série caiu', 'ombro incomodando'..."
-              rows={2}
-              className="w-full bg-black border border-[#1a1a1a] focus:border-[#d4ff00] outline-none px-3 py-2 text-white font-mono text-xs placeholder:text-[#444] resize-none transition-colors" />
           </div>
         </>
       )}
@@ -1892,34 +2096,58 @@ const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
   const completed = !!set.completed;
   const oneRM = exDef.type === 'weight' && set.weight !== '' && set.reps !== '' ? calc1RM(set.weight, set.reps) : 0;
   const isTime = exDef.type === 'time';
+  const [confirmDel, setConfirmDel] = useState(false);
+  const pressTimer = useRef(null);
+
+  const startPress = (e) => {
+    // Não dispara long-press se o pointerdown for em input ou botão
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'button' || tag === 'svg' || tag === 'path') return;
+    if (pressTimer.current) clearTimeout(pressTimer.current);
+    pressTimer.current = setTimeout(() => {
+      vibrate(50);
+      setConfirmDel(true);
+      pressTimer.current = null;
+    }, 600);
+  };
+  const cancelPress = () => {
+    if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
+  };
 
   return (
-    <tr className={completed ? 'completed' : ''}>
-      <td className="col-num">{si+1}</td>
-      {isTime ? (
-        <>
-          <td><NumStepper value={set.weight} onChange={v=>onUpdate({weight:v})} step={0.5} disabled={completed} /></td>
-          <td><NumStepper value={set.time} onChange={v=>onUpdate({time:v})} step={1} disabled={completed} /></td>
-        </>
-      ) : (
-        <>
-          <td><NumStepper value={set.weight} onChange={v=>onUpdate({weight:v})} step={0.5} disabled={completed} /></td>
-          <td><NumStepper value={set.reps} onChange={v=>onUpdate({reps:v})} step={1} disabled={completed} /></td>
-          <td className="cell-1rm">{oneRM > 0 ? oneRM : '—'}</td>
-        </>
+    <>
+      <tr className={completed ? 'completed' : ''}
+        onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress}>
+        <td className="col-num">{si+1}</td>
+        {isTime ? (
+          <>
+            <td><NumStepper value={set.weight} onChange={v=>onUpdate({weight:v})} step={0.5} disabled={completed} /></td>
+            <td><NumStepper value={set.time} onChange={v=>onUpdate({time:v})} step={1} disabled={completed} /></td>
+          </>
+        ) : (
+          <>
+            <td><NumStepper value={set.weight} onChange={v=>onUpdate({weight:v})} step={0.5} disabled={completed} /></td>
+            <td><NumStepper value={set.reps} onChange={v=>onUpdate({reps:v})} step={1} disabled={completed} /></td>
+            <td className="cell-1rm">{oneRM > 0 ? oneRM : '—'}</td>
+          </>
+        )}
+        <td className="col-check">
+          <CompletedCheckbox checked={completed} onChange={onToggle} />
+        </td>
+      </tr>
+      {confirmDel && (
+        <Confirm open={true} title={`Excluir série ${si+1}?`}
+          message="Esta série será removida do exercício. Esta ação não pode ser desfeita."
+          confirmLabel="Excluir"
+          onConfirm={()=>{ setConfirmDel(false); onRemove(); }}
+          onCancel={()=>setConfirmDel(false)} danger />
       )}
-      <td className="col-check">
-        <CompletedCheckbox checked={completed} onChange={onToggle} />
-      </td>
-      <td className="col-action">
-        <button onClick={onRemove} className="text-[#444] hover:text-[#ff4757] p-1" style={{display:'inline-flex'}}><X size={14} /></button>
-      </td>
-    </tr>
+    </>
   );
 };
 
 const CompletedCheckbox = ({ checked, onChange }) => (
-  <button type="button" onClick={onChange}
+  <button type="button" onClick={()=>{ vibrate(20); onChange && onChange(); }}
     className={`w-7 h-7 border transition-colors ${checked?'bg-[#d4ff00] border-[#d4ff00]':'bg-black border-[#333] hover:border-[#666]'}`}
     style={{display:'inline-flex', alignItems:'center', justifyContent:'center'}}>
     {checked && <Check size={16} strokeWidth={3} className="text-black" />}
@@ -1963,10 +2191,10 @@ const ExerciseHistoryModal = ({ exerciseId, data, onClose }) => {
                     <div key={si} className="flex items-center gap-3 text-xs font-mono">
                       <span className="text-[#666] w-5">{si+1}</span>
                       {exDef && exDef.type==='time' ? (
-                        <span className="text-white">{s.weight?`${s.weight}kg · `:''}{s.time}s</span>
+                        <span className="text-white">{Number(s.weight)>0?`${s.weight}kg · `:''}{s.time}s</span>
                       ) : (
                         <>
-                          <span className="text-white">{s.weight}kg × {s.reps}</span>
+                          <span className="text-white">{formatLoadReps(s.weight, s.reps)}</span>
                           {s.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {s.oneRM}kg</span>}
                         </>
                       )}
@@ -2091,16 +2319,16 @@ const SummaryModal = ({ active, data, onConfirm, onCancel, onUpdateActive }) => 
       </div>
 
       <div>
-        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">Disposição</div>
-        <ScaleSelector value={disposition} onChange={setDisposition} labels={DISP_LABELS} />
+        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">Como você se sentiu?</div>
+        <ScaleSelector value={disposition} onChange={setDisposition} labels={DISP_LABELS} colors={DISP_COLORS} />
       </div>
       <div>
-        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">Intensidade</div>
-        <ScaleSelector value={intensity} onChange={setIntensity} labels={RPE_LABELS} />
+        <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">Como foi o treino?</div>
+        <ScaleSelector value={intensity} onChange={setIntensity} labels={RPE_LABELS} colors={INTENSITY_COLORS} />
       </div>
 
       <TextArea label="Observações finais do treino" value={active.sessionNote||''}
-        onChange={v=>onUpdateActive({...active, sessionNote:v})} placeholder="Como foi o treino?" rows={3} />
+        onChange={v=>onUpdateActive({...active, sessionNote:v})} placeholder="Algo que aconteceu hoje?" rows={3} />
 
       {/* Mudança estrutural: ordem, adição, remoção, substituição */}
       {structuralChange && (
@@ -2258,15 +2486,56 @@ const sessionToText = (session, data) => {
     const isTime = def && def.type === 'time';
     lines.push(`${idx+1}. ${name} (${muscle})`);
     if (e.targetRepsMin && e.targetRepsMax) lines.push(`   Faixa alvo: ${e.targetRepsMin}-${e.targetRepsMax} reps`);
+
+    // Sessão anterior do mesmo exercício pra calcular diffs
+    const prevSession = data.sessions.find(s2 => s2.id !== session.id && s2.date < session.date && s2.exercises.some(ex => ex.exerciseId === e.exerciseId));
+    const prevLog = prevSession ? prevSession.exercises.find(ex => ex.exerciseId === e.exerciseId) : null;
+    const prevSets = prevLog ? (prevLog.sets||[]).filter(s=>s.completed) : [];
+
+    // Maior 1RM histórico antes desta sessão
+    let priorMax1RM = 0;
+    if (def && def.type === 'weight') {
+      data.sessions.forEach(s2 => {
+        if (s2.date >= session.date) return;
+        const log = s2.exercises.find(ex => ex.exerciseId === e.exerciseId);
+        if (!log) return;
+        (log.sets||[]).filter(x=>x.completed).forEach(x => {
+          if ((x.oneRM||0) > priorMax1RM) priorMax1RM = x.oneRM || 0;
+        });
+      });
+    }
     const sets = (e.sets||[]).filter(s=>s.completed);
+    const sessionMax1RM = sets.reduce((m, s) => Math.max(m, s.oneRM || 0), 0);
+    const isBest1RM = !isTime && sessionMax1RM > 0 && sessionMax1RM > priorMax1RM;
+    if (isBest1RM) {
+      lines.push(`   ★ NOVO MELHOR 1RM: ${sessionMax1RM}kg (anterior: ${priorMax1RM || 'sem registro'}kg)`);
+    }
+
     sets.forEach((s, si) => {
+      let line;
       if (isTime) {
-        const wPart = s.weight ? `${s.weight}kg · ` : '';
-        lines.push(`   Série ${si+1}: ${wPart}${s.time}s`);
+        const wPart = Number(s.weight) > 0 ? `${s.weight}kg · ` : '';
+        line = `   Série ${si+1}: ${wPart}${s.time}s`;
       } else {
         const oneRM = s.oneRM > 0 ? ` (1RM ${s.oneRM}kg)` : '';
-        lines.push(`   Série ${si+1}: ${s.weight}kg × ${s.reps}${oneRM}`);
+        line = `   Série ${si+1}: ${formatLoadReps(s.weight, s.reps)}${oneRM}`;
       }
+      // Diff vs sessão anterior na mesma série
+      const prevS = prevSets[si];
+      if (prevS) {
+        const parts = [];
+        if (isTime) {
+          const dt = (Number(s.time)||0) - (Number(prevS.time)||0);
+          if (dt !== 0) parts.push(`${dt > 0 ? '+' : ''}${dt}s`);
+        } else {
+          const dw = (Number(s.weight)||0) - (Number(prevS.weight)||0);
+          const dr = (Number(s.reps)||0) - (Number(prevS.reps)||0);
+          if (dw !== 0) parts.push(`${dw>0?'+':''}${dw}kg`);
+          if (dr !== 0) parts.push(`${dr>0?'+':''}${dr} reps`);
+        }
+        if (parts.length) line += `   [vs anterior: ${parts.join(', ')}]`;
+      }
+      lines.push(line);
     });
     if (e.execScore) lines.push(`   Nota execução: ${e.execScore}/5 (${EXEC_LABELS[e.execScore]})`);
     if (e.sessionNote) lines.push(`   Anotação: ${e.sessionNote}`);
@@ -2378,29 +2647,86 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
         const def = data.exercises.find(d=>d.id===e.exerciseId);
         const sets = (e.sets||[]).filter(s=>s.completed);
         const c = muscleColor(def && def.muscle);
+        const isTime = def && def.type === 'time';
+
+        // Encontra a sessão imediatamente anterior do mesmo exercício pra calcular diffs.
+        const prevSession = data.sessions.find(s2 => s2.id !== session.id && s2.date < session.date && s2.exercises.some(ex => ex.exerciseId === e.exerciseId));
+        const prevLog = prevSession ? prevSession.exercises.find(ex => ex.exerciseId === e.exerciseId) : null;
+        const prevSets = prevLog ? (prevLog.sets||[]).filter(s=>s.completed) : [];
+
+        // Para cada série, calcula 1RM máximo HISTÓRICO até antes desta sessão
+        // (pra marcar "MELHOR 1RM" corretamente).
+        const priorMax1RM = (() => {
+          if (!def || def.type !== 'weight') return 0;
+          let max = 0;
+          data.sessions.forEach(s2 => {
+            if (s2.date >= session.date) return;
+            const log = s2.exercises.find(ex => ex.exerciseId === e.exerciseId);
+            if (!log) return;
+            (log.sets||[]).filter(x=>x.completed).forEach(x => {
+              if ((x.oneRM||0) > max) max = x.oneRM || 0;
+            });
+          });
+          return max;
+        })();
+        // 1RM máximo desta sessão
+        const sessionMax1RM = sets.reduce((m, s) => Math.max(m, s.oneRM || 0), 0);
+        const isBest1RM = !isTime && sessionMax1RM > 0 && sessionMax1RM > priorMax1RM;
+
         return (
-          <div key={i} className="border-b border-[#1a1a1a] border-l-4" style={{ borderLeftColor: c, background: withAlpha(c, 0.04) }}>
+          <div key={i} className="border-b border-[#1a1a1a] border-l-4" style={{ borderLeftColor: c }}>
             <div className="px-4 py-3">
-              <div className="flex items-baseline justify-between mb-2 gap-2">
+              <div className="flex items-baseline justify-between mb-1 gap-2">
                 <h3 className="font-display text-lg tracking-wider leading-none flex-1 min-w-0 truncate">{(def && def.name) || 'Exercício removido'}</h3>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {e.execScore && (
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#d4ff00]">
+                    <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: EXEC_COLORS[e.execScore] }}>
                       Exec {e.execScore}/5
                     </span>
                   )}
-                  <div className="text-[10px] font-mono text-[#666]">{sets.length} séries</div>
                 </div>
               </div>
+              {/* Grupo muscular abaixo do nome */}
+              {def && def.muscle && (
+                <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: c }}>
+                  {def.muscle} · {sets.length} séries
+                  {isBest1RM && (
+                    <span className="ml-2 px-1.5 py-0.5" style={{ background: '#d4ff00', color: '#000' }}>★ MELHOR 1RM {sessionMax1RM}kg</span>
+                  )}
+                </div>
+              )}
               {sets.length > 0 && (
                 <div className="space-y-1 mb-2">
-                  {sets.map((s,si) => (
-                    <div key={si} className="flex items-center gap-3 text-xs font-mono">
-                      <span className="text-[#666] w-6">{si+1}</span>
-                      {def && def.type==='time' ? <span className="text-white">{s.weight?`${s.weight}kg · `:''}{s.time}s</span>
-                       : (<><span className="text-white">{s.weight}kg × {s.reps}</span>{s.oneRM > 0 && <span className="text-[#d4ff00] ml-auto">1RM {s.oneRM}kg</span>}</>)}
-                    </div>
-                  ))}
+                  {sets.map((s,si) => {
+                    const prevS = prevSets[si];
+                    let diffStr = null;
+                    if (prevS) {
+                      if (isTime) {
+                        const dt = (Number(s.time)||0) - (Number(prevS.time)||0);
+                        if (dt !== 0) diffStr = `${dt > 0 ? '+' : ''}${dt}s`;
+                      } else {
+                        const dw = (Number(s.weight)||0) - (Number(prevS.weight)||0);
+                        const dr = (Number(s.reps)||0) - (Number(prevS.reps)||0);
+                        const parts = [];
+                        if (dw !== 0) parts.push(`${dw>0?'+':''}${dw}kg`);
+                        if (dr !== 0) parts.push(`${dr>0?'+':''}${dr}r`);
+                        if (parts.length) diffStr = parts.join(' ');
+                      }
+                    }
+                    const diffColor = diffStr && diffStr.startsWith('+') ? '#84cc16' : '#ff4757';
+                    return (
+                      <div key={si} className="flex items-center gap-2 text-xs font-mono">
+                        <span className="text-[#666] w-5 flex-shrink-0">{si+1}</span>
+                        {isTime ? (
+                          <span className="text-white flex-1 min-w-0 truncate">{Number(s.weight)>0?`${s.weight}kg · `:''}{s.time}s</span>
+                        ) : (
+                          <span className="text-white flex-1 min-w-0 truncate">{formatLoadReps(s.weight, s.reps)}</span>
+                        )}
+                        {diffStr && <span style={{ color: diffColor }} className="flex-shrink-0 text-[10px]">{diffStr}</span>}
+                        {!isTime && s.oneRM > 0 && <span className="text-[#888] flex-shrink-0">1RM {s.oneRM}kg</span>}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               {e.sessionNote && (
@@ -2536,8 +2862,8 @@ const ProgressView = ({ data }) => {
                   {s.sets.map((set, si) => (
                     <div key={si} className="flex items-center gap-3 text-xs font-mono">
                       <span className="text-[#666] w-5">{si+1}</span>
-                      {isTime ? <span className="text-white">{set.weight?`${set.weight}kg · `:''}{set.time}s</span>
-                        : (<><span className="text-white">{set.weight}kg × {set.reps}</span>{set.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {set.oneRM}kg</span>}</>)}
+                      {isTime ? <span className="text-white">{Number(set.weight)>0?`${set.weight}kg · `:''}{set.time}s</span>
+                        : (<><span className="text-white">{formatLoadReps(set.weight, set.reps)}</span>{set.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {set.oneRM}kg</span>}</>)}
                     </div>
                   ))}
                 </div>
@@ -2983,6 +3309,9 @@ function App() {
   const [editingWorkout, setEditingWorkout] = useState(null);
   const [viewingSession, setViewingSession] = useState(null);
   const [finishedSession, setFinishedSession] = useState(null);
+  // Quando true, o treino ativo fica em segundo plano e o usuário vê a tela principal.
+  // Nada é descartado — é só navegação. O active continua salvo no localStorage.
+  const [paused, setPaused] = useState(false);
   const { show: toast, Toast } = useToast();
 
   // Recuperação: se o app abriu com um treino ativo cujo último update foi há muito tempo
@@ -3039,6 +3368,17 @@ function App() {
   const startWorkout = (template) => {
     if (template.exercises.length === 0) return;
     const sessionId = uid();
+
+    // Helper: busca o último execScore registrado para um exerciseId no histórico.
+    // Default 3 se nunca foi avaliado.
+    const findLastExecScore = (exerciseId) => {
+      for (const s of data.sessions) {
+        const log = s.exercises.find(e => e.exerciseId === exerciseId);
+        if (log && log.execScore != null) return log.execScore;
+      }
+      return 3;
+    };
+
     const session = {
       id: sessionId,
       templateId: template.id,
@@ -3050,7 +3390,6 @@ function App() {
       elapsed: 0,
       disposition: null,
       intensity: null,
-      // Snapshot da ordem original pra detectar mudanças de estrutura ao finalizar
       originalExerciseIds: template.exercises.map(we => we.exerciseId),
       exercises: template.exercises.map(we => {
         const def = data.exercises.find(d=>d.id===we.exerciseId);
@@ -3063,6 +3402,7 @@ function App() {
           targetRepsMax: norm.targetRepsMax,
           notes: norm.notes,
           sessionNote:'',
+          execScore: findLastExecScore(we.exerciseId),
           sets
         };
       })
@@ -3070,7 +3410,7 @@ function App() {
     setActive(session);
   };
 
-  if (active) {
+  if (active && !paused) {
     return (
       <>
         {staleSession && (
@@ -3088,7 +3428,8 @@ function App() {
         )}
         {!staleSession && (
           <ActiveWorkout active={active} setActive={setActive} data={data} setData={setData}
-            onFinish={(session) => { if (session) setFinishedSession(session); }} />
+            onPause={()=>setPaused(true)}
+            onFinish={(session) => { setPaused(false); if (session) setFinishedSession(session); }} />
         )}
         {finishedSession && (
           <Modal open={true} onClose={()=>setFinishedSession(null)} title="Treino finalizado"
@@ -3123,7 +3464,9 @@ function App() {
   return (
     <>
       <div className="min-h-screen bg-black text-white">
-        {tab==='home'      && <WorkoutsView data={data} onStart={startWorkout} onEdit={setEditingWorkout} />}
+        {tab==='home'      && <WorkoutsView data={data} onStart={startWorkout} onEdit={setEditingWorkout}
+                                pausedSession={paused && active ? active : null}
+                                onResume={()=>setPaused(false)} />}
         {tab==='exercises' && <ExercisesView data={data} setData={setData} />}
         {tab==='history'   && <HistoryView   data={data} onSelect={setViewingSession} />}
         {tab==='progress'  && <ProgressView  data={data} />}
