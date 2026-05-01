@@ -382,12 +382,13 @@ const LogOut = mkI('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline
 /* CONSTANTS */
 const STORAGE_KEY = 'gymapp-data-v1';
 const ACTIVE_KEY  = 'gymapp-active-v1';
+const PAUSED_KEY  = 'gymapp-paused-v1';
 const COLLAPSED_KEY = 'gymapp-collapsed-v1';
 const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v8';
+const APP_VERSION = '2026-04-30-v9';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -396,25 +397,30 @@ const EX_TYPES = [
 
 const COMMON_MUSCLES = ['Peito','Costas','Ombros','Bíceps','Tríceps','Antebraço','Quadríceps','Posterior','Glúteos','Panturrilha','Core','Lombar','Cardio'];
 
-/* Paleta refeita para máxima distinção entre grupos próximos.
-   Estratégia: matizes espaçados ~30° no círculo cromático, com saturação alta. */
+/* Paleta refeita pra evitar pares próximos no círculo cromático.
+   Distância angular mínima entre quaisquer dois grupos: ~25-30°.
+   Pares antes problemáticos resolvidos:
+   - Peito (vermelho 0°) vs Posterior (magenta 295°)  — agora 65° distantes
+   - Core (índigo 240°) vs Quadríceps (ciano 188°) vs Cardio (verde 140°) — todos separados
+   - Tríceps (laranja 25°) vs Glúteos (marrom-âmbar escuro, baixa saturação) — distintos por luminosidade
+*/
 const MUSCLE_COLORS = {
   'Peito':       '#ef4444', // vermelho puro
-  'Costas':      '#3b82f6', // azul
+  'Tríceps':     '#f97316', // laranja vibrante
   'Ombros':      '#fbbf24', // amarelo
-  'Bíceps':      '#a855f7', // roxo
-  'Tríceps':     '#f97316', // laranja (bem distinto de peito)
-  'Antebraço':   '#d946ef', // magenta
+  'Glúteos':     '#a16207', // marrom-âmbar escuro (distinto por luminosidade)
+  'Panturrilha': '#84cc16', // lima
+  'Cardio':      '#22c55e', // verde puro
+  'Core':        '#0d9488', // teal escuro
   'Quadríceps':  '#06b6d4', // ciano
-  'Posterior':   '#f43f5e', // rosa-vermelho
-  'Glúteos':     '#d97706', // âmbar escuro
-  'Panturrilha': '#84cc16', // verde-lima
-  'Core':        '#14b8a6', // verde-água
   'Lombar':      '#0ea5e9', // azul-céu
-  'Cardio':      '#10b981', // verde-esmeralda
+  'Costas':      '#3b82f6', // azul
+  'Bíceps':      '#8b5cf6', // roxo
+  'Posterior':   '#c026d3', // magenta
+  'Antebraço':   '#ec4899', // rosa
   'Sem grupo':   '#888888',
 };
-const FALLBACK_PALETTE = ['#ef4444','#3b82f6','#fbbf24','#a855f7','#f97316','#d946ef','#06b6d4','#f43f5e','#d97706','#84cc16','#14b8a6','#0ea5e9','#10b981'];
+const FALLBACK_PALETTE = ['#ef4444','#f97316','#fbbf24','#a16207','#84cc16','#22c55e','#0d9488','#06b6d4','#0ea5e9','#3b82f6','#8b5cf6','#c026d3','#ec4899'];
 const muscleColor = (name) => {
   if (!name) return MUSCLE_COLORS['Sem grupo'];
   if (MUSCLE_COLORS[name]) return MUSCLE_COLORS[name];
@@ -1008,14 +1014,19 @@ const WorkoutsView = ({ data, onStart, onEdit, pausedSession, onResume }) => {
   const inactiveWorkouts = data.workouts.filter(w => w.inactive);
 
   // Total agregado de séries por grupo muscular somando todos os ativos.
+  // Total agregado SEMANAL: cada treino é contado tantas vezes quantos dias da semana
+  // ele estiver atribuído. Treino sem dia atribuído conta apenas 1 vez (interpretado
+  // como executado uma vez na semana). É só nesta agregação — o card individual
+  // mostra o total normal por treino.
   const aggregatedMuscleSets = useMemo(() => {
     const m = {};
     activeWorkouts.forEach(w => {
+      const multiplier = (w.weekdays && w.weekdays.length) ? w.weekdays.length : 1;
       w.exercises.forEach(we => {
         const ex = data.exercises.find(e=>e.id===we.exerciseId);
         const muscle = (ex && ex.muscle) || 'Sem grupo';
         const sets = (we.setRefs || []).length || we.targetSets || 0;
-        m[muscle] = (m[muscle] || 0) + sets;
+        m[muscle] = (m[muscle] || 0) + (sets * multiplier);
       });
     });
     return Object.entries(m).sort((a,b)=>b[1]-a[1]);
@@ -1215,7 +1226,7 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
               })}
             </div>
           </div>
-          {/* Dias da semana (multi-seleção) */}
+          {/* Dias da semana (multi-seleção). Botões pequenos, todos numa linha. */}
           <div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Dias da semana</div>
             <div className="grid grid-cols-7 gap-1">
@@ -1230,7 +1241,7 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
                         return { ...prev, weekdays: sel ? days.filter(d=>d!==idx) : [...days, idx].sort((a,b)=>a-b) };
                       });
                     }}
-                    className="h-10 border font-mono text-xs uppercase tracking-wider transition-colors"
+                    className="h-7 border font-mono text-[10px] uppercase tracking-wider transition-colors"
                     style={sel
                       ? { borderColor: '#d4ff00', color: '#d4ff00', background: 'rgba(212,255,0,0.1)' }
                       : { borderColor: '#1a1a1a', color: '#666' }}>
@@ -1346,19 +1357,52 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
   const [it, setIt] = useState(() => normalizeTemplateExercise(item, exercise));
   const isTime = exercise && exercise.type === 'time';
 
-  const updateTargetSets = (n) => {
-    const next = Math.max(1, parseInt(n)||1);
+  // Adiciona uma série copiando a última (ou um default).
+  const addSet = () => {
     const refs = [...(it.setRefs || [])];
-    while (refs.length < next) {
-      const last = refs[refs.length-1] || (isTime ? {weight:'', reps:'', time:30} : {weight:'', reps:10, time:''});
-      refs.push({ ...last });
-    }
-    refs.length = next;
-    setIt({ ...it, targetSets: next, setRefs: refs });
+    const last = refs[refs.length-1] || (isTime ? {weight:'', reps:'', time:30} : {weight:'', reps:10, time:''});
+    refs.push({ ...last });
+    setIt({ ...it, targetSets: refs.length, setRefs: refs });
+    vibrate(15);
   };
 
-  const updateRef = (i, patch) => {
-    setIt({ ...it, setRefs: it.setRefs.map((r,j)=>j===i?{...r,...patch}:r) });
+  // Remove a última série. Mantém pelo menos 1.
+  const removeSet = () => {
+    const refs = [...(it.setRefs || [])];
+    if (refs.length <= 1) return;
+    refs.pop();
+    setIt({ ...it, targetSets: refs.length, setRefs: refs });
+    vibrate(15);
+  };
+
+  // Atualiza valor de uma série e propaga em massa quando faz sentido.
+  // Lógica: dado oldValue (valor anterior dessa série naquele campo) e newValue,
+  // varre as outras séries: se TODAS as outras estão vazias OU TODAS são iguais a oldValue
+  // ou a newValue, sincroniza com newValue.
+  // Se tiver QUALQUER outra série com valor diferente de oldValue/newValue/vazio, NÃO propaga.
+  const updateRef = (i, field, newValue) => {
+    setIt(prev => {
+      const refs = prev.setRefs || [];
+      const oldValue = refs[i] ? refs[i][field] : '';
+      const isEmpty = (v) => v === '' || v == null;
+
+      // Decide se deve propagar: todas as OUTRAS séries devem ter valor vazio
+      // ou igual a oldValue (o valor que estava antes da edição).
+      const shouldPropagate = refs.every((r, j) => {
+        if (j === i) return true;
+        const v = r[field];
+        if (isEmpty(v)) return true;
+        // Comparação numérica robusta (evita falso positivo entre "" e 0)
+        return Number(v) === Number(oldValue);
+      });
+
+      const next = refs.map((r, j) => {
+        if (j === i) return { ...r, [field]: newValue };
+        if (shouldPropagate) return { ...r, [field]: newValue };
+        return r;
+      });
+      return { ...prev, setRefs: next };
+    });
   };
 
   return (
@@ -1368,9 +1412,6 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
         <Btn variant="ghost" onClick={onCancel} full>Cancelar</Btn>
         <Btn variant="primary" onClick={()=>onSave(it)} full>OK</Btn>
       </>}>
-      <Input label="Número de séries" type="number" inputMode="numeric" value={it.targetSets}
-        onChange={updateTargetSets} min={1} />
-
       {!isTime && (
         <div className="grid grid-cols-2 gap-3">
           <Input label="Faixa reps mín" type="number" inputMode="numeric" value={it.targetRepsMin}
@@ -1382,10 +1423,10 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
 
       <div>
         <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">
-          Cargas e {isTime ? 'tempos' : 'repetições'} de referência por série
+          Séries de referência ({(it.setRefs||[]).length})
         </div>
         <p className="text-[10px] font-mono text-[#666] mb-3 leading-relaxed">
-          Estes valores são pré-preenchidos no início do treino.
+          Estes valores são pré-preenchidos no início do treino. Ao editar uma série, os valores serão propagados para as demais se elas estiverem vazias ou idênticas ao valor anterior.
         </p>
         <table className="set-table">
           <thead>
@@ -1400,19 +1441,30 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
                 <td className="col-num">{i+1}</td>
                 {isTime ? (
                   <>
-                    <td><NumStepper value={r.weight} onChange={v=>updateRef(i, {weight:v})} step={0.5} /></td>
-                    <td><NumStepper value={r.time} onChange={v=>updateRef(i, {time:v})} step={1} /></td>
+                    <td><NumStepper value={r.weight} onChange={v=>updateRef(i, 'weight', v)} step={0.5} /></td>
+                    <td><NumStepper value={r.time} onChange={v=>updateRef(i, 'time', v)} step={1} /></td>
                   </>
                 ) : (
                   <>
-                    <td><NumStepper value={r.weight} onChange={v=>updateRef(i, {weight:v})} step={0.5} /></td>
-                    <td><NumStepper value={r.reps} onChange={v=>updateRef(i, {reps:v})} step={1} /></td>
+                    <td><NumStepper value={r.weight} onChange={v=>updateRef(i, 'weight', v)} step={0.5} /></td>
+                    <td><NumStepper value={r.reps} onChange={v=>updateRef(i, 'reps', v)} step={1} /></td>
                   </>
                 )}
               </tr>
             ))}
           </tbody>
         </table>
+        {/* Botões de adicionar/remover série ao final da tabela */}
+        <div className="grid grid-cols-2 gap-2 mt-2">
+          <button type="button" onClick={removeSet} disabled={(it.setRefs||[]).length <= 1}
+            className="h-10 border border-[#1a1a1a] hover:border-[#333] text-[#888] disabled:opacity-30 disabled:cursor-not-allowed font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+            <span style={{fontSize: 16, fontWeight: 600}}>−</span> Remover série
+          </button>
+          <button type="button" onClick={addSet}
+            className="h-10 border border-[#1a1a1a] hover:border-[#d4ff00] text-[#d4ff00] font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+            <span style={{fontSize: 16, fontWeight: 600}}>+</span> Adicionar série
+          </button>
+        </div>
       </div>
 
       <TextArea label="Observações deste exercício no treino" value={it.notes} onChange={v=>setIt({...it, notes:v})}
@@ -2537,7 +2589,16 @@ const sessionToText = (session, data) => {
       }
       lines.push(line);
     });
-    if (e.execScore) lines.push(`   Nota execução: ${e.execScore}/5 (${EXEC_LABELS[e.execScore]})`);
+    if (e.execScore) {
+      // Diff vs sessão anterior do mesmo exercício
+      const prevExecScore = prevLog ? prevLog.execScore : null;
+      let execLine = `   Nota execução: ${e.execScore}/5 (${EXEC_LABELS[e.execScore]})`;
+      if (prevExecScore && prevExecScore !== e.execScore) {
+        const arrow = e.execScore > prevExecScore ? '↑ melhorou' : '↓ piorou';
+        execLine += `   [${arrow}: ${prevExecScore}→${e.execScore}]`;
+      }
+      lines.push(execLine);
+    }
     if (e.sessionNote) lines.push(`   Anotação: ${e.sessionNote}`);
     lines.push('');
   });
@@ -2673,6 +2734,13 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
         const sessionMax1RM = sets.reduce((m, s) => Math.max(m, s.oneRM || 0), 0);
         const isBest1RM = !isTime && sessionMax1RM > 0 && sessionMax1RM > priorMax1RM;
 
+        // Diff de execScore vs sessão anterior do mesmo exercício
+        const prevExecScore = prevLog ? prevLog.execScore : null;
+        const execDiff = (e.execScore && prevExecScore && e.execScore !== prevExecScore)
+          ? (e.execScore > prevExecScore ? `↑ ${prevExecScore}→${e.execScore}` : `↓ ${prevExecScore}→${e.execScore}`)
+          : null;
+        const execDiffColor = execDiff && execDiff.startsWith('↑') ? '#84cc16' : '#ff4757';
+
         return (
           <div key={i} className="border-b border-[#1a1a1a] border-l-4" style={{ borderLeftColor: c }}>
             <div className="px-4 py-3">
@@ -2683,6 +2751,9 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
                     <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: EXEC_COLORS[e.execScore] }}>
                       Exec {e.execScore}/5
                     </span>
+                  )}
+                  {execDiff && (
+                    <span className="text-[10px] font-mono" style={{ color: execDiffColor }}>{execDiff}</span>
                   )}
                 </div>
               </div>
@@ -3310,8 +3381,21 @@ function App() {
   const [viewingSession, setViewingSession] = useState(null);
   const [finishedSession, setFinishedSession] = useState(null);
   // Quando true, o treino ativo fica em segundo plano e o usuário vê a tela principal.
-  // Nada é descartado — é só navegação. O active continua salvo no localStorage.
-  const [paused, setPaused] = useState(false);
+  // Persiste no localStorage para sobreviver a reload.
+  // ALÉM disso, ao carregar a página com um treino ativo, sempre começa pausado —
+  // isso garante que recarregar/reabrir o app mostra o banner de retomada em vez de
+  // cair direto no treino, evitando confusão e reduzindo risco de perder dados acidentalmente.
+  const [paused, setPausedState] = useState(() => {
+    const persistedPaused = loadLS(PAUSED_KEY, false);
+    const hasActive = !!loadLS(ACTIVE_KEY, null);
+    // Se tem active, força pausa ao abrir (independente do flag persistido).
+    return persistedPaused || hasActive;
+  });
+  const setPaused = useCallback((v) => {
+    setPausedState(v);
+    if (v) saveLS(PAUSED_KEY, true);
+    else localStorage.removeItem(PAUSED_KEY);
+  }, []);
   const { show: toast, Toast } = useToast();
 
   // Recuperação: se o app abriu com um treino ativo cujo último update foi há muito tempo
@@ -3367,6 +3451,8 @@ function App() {
 
   const startWorkout = (template) => {
     if (template.exercises.length === 0) return;
+    // Limpa modal de "Treino finalizado" da sessão anterior, se ainda estiver no estado.
+    setFinishedSession(null);
     const sessionId = uid();
 
     // Helper: busca o último execScore registrado para um exerciseId no histórico.
@@ -3431,12 +3517,6 @@ function App() {
             onPause={()=>setPaused(true)}
             onFinish={(session) => { setPaused(false); if (session) setFinishedSession(session); }} />
         )}
-        {finishedSession && (
-          <Modal open={true} onClose={()=>setFinishedSession(null)} title="Treino finalizado"
-            footer={<Btn onClick={()=>setFinishedSession(null)} full>OK</Btn>}>
-            <p className="text-sm font-mono text-[#aaa]">Salvo no histórico.</p>
-          </Modal>
-        )}
         {Toast}
       </>
     );
@@ -3473,6 +3553,15 @@ function App() {
         {tab==='config'    && <ConfigView    data={data} setData={setData} toast={toast} />}
       </div>
       <BottomNav tab={tab} onTab={goTab} />
+      {/* Modal de "Treino finalizado" no fluxo principal: aparece após o ActiveWorkout sair de tela.
+          Se ficasse dentro do retorno do `if (active)`, sumiria junto com o ActiveWorkout
+          quando active fosse null e o modal nunca seria visto. */}
+      {finishedSession && (
+        <Modal open={true} onClose={()=>setFinishedSession(null)} title="Treino finalizado"
+          footer={<Btn onClick={()=>setFinishedSession(null)} full>OK</Btn>}>
+          <p className="text-sm font-mono text-[#aaa]">Salvo no histórico.</p>
+        </Modal>
+      )}
       {Toast}
     </>
   );
