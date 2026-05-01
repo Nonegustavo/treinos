@@ -271,13 +271,13 @@ input[type=number] { -moz-appearance: textfield; }
 /* Tabela de séries */
 .set-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .set-table th, .set-table td { padding: 6px 2px; vertical-align: middle; }
-.set-table th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; font-weight: normal; text-align: center; border-bottom: 1px solid #0d0d0d; background: #050505; }
+.set-table th { font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #666; font-weight: normal; text-align: center; border-bottom: 1px solid #0d0d0d; background: #050505; }
 .set-table td { border-bottom: 1px solid #0d0d0d; text-align: center; font-size: 0.875rem; }
 .set-table tr:last-child td { border-bottom: none; }
-.set-table .col-num { width: 22px; color: #666; font-size: 11px; }
+.set-table .col-num { width: 22px; color: #666; font-size: 11px; padding-left: 4px; }
 .set-table .col-action { width: 28px; }
-.set-table .col-check { width: 40px; }
-.set-table .cell-input { background: transparent; border: 1px solid #1a1a1a; color: white; padding: 6px 2px; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; text-align: center; outline: none; min-width: 0; }
+.set-table .col-check { width: 40px; padding-right: 4px; }
+.set-table .cell-input { background: transparent; border: 1px solid #1a1a1a; color: white; padding: 7px 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; text-align: center; outline: none; min-width: 0; }
 .set-table .cell-input:focus { border-color: #d4ff00; }
 .set-table .cell-input:disabled { border-color: transparent; color: #666; }
 .set-table tr.completed td { background: #0a0a0a; }
@@ -388,7 +388,7 @@ const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v10';
+const APP_VERSION = '2026-04-30-v12';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -821,19 +821,14 @@ const Pill = ({ children, color }) => {
    - Nunca permite valores negativos.
    - Preserva string vazia (não força 0 ao apagar).
    - Compacto pra caber em células de tabela. */
+/* NumStepper: input numérico simples (sem botões − e +).
+   Mantido com nome "NumStepper" porque é usado em vários pontos.
+   - step define precisão (0.5 pra carga, 1 pra reps/tempo).
+   - Nunca permite valores negativos.
+   - Preserva string vazia (não força 0 ao apagar). */
 const NumStepper = ({ value, onChange, step = 1, disabled, placeholder = '—' }) => {
   const isEmpty = value === '' || value == null;
-  const num = isEmpty ? 0 : Number(value) || 0;
   const isInt = step >= 1 && Number.isInteger(step);
-
-  const setVal = (n) => {
-    if (n < 0) n = 0;
-    // arredonda pra step, evita 12.500000001 etc.
-    const rounded = Math.round(n / step) * step;
-    onChange(isInt ? Math.round(rounded) : Math.round(rounded * 100) / 100);
-  };
-  const dec = () => { if (disabled) return; setVal(num - step); };
-  const inc = () => { if (disabled) return; setVal(num + step); };
 
   const handleInput = (str) => {
     if (str === '') { onChange(''); return; }
@@ -843,26 +838,14 @@ const NumStepper = ({ value, onChange, step = 1, disabled, placeholder = '—' }
   };
 
   return (
-    <div style={{ display: 'flex', alignItems: 'stretch', gap: 0, width: '100%' }}>
-      <button type="button" onClick={dec} disabled={disabled || (num <= 0 && !isEmpty)}
-        className={`flex-shrink-0 border border-[#1a1a1a] flex items-center justify-center transition-colors ${disabled?'opacity-30':'hover:border-[#333] hover:text-[#d4ff00] text-[#888]'}`}
-        style={{ width: 28, borderRight: 'none' }}>
-        <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 600 }}>−</span>
-      </button>
-      <input type="number" inputMode="decimal" step={step} min="0"
-        value={isEmpty ? '' : value}
-        onChange={(e)=>handleInput(e.target.value)}
-        onFocus={(e)=>e.target.select()}
-        placeholder={placeholder}
-        disabled={disabled}
-        className="cell-input"
-        style={{ flex: 1, minWidth: 0, borderLeft: 'none', borderRight: 'none' }} />
-      <button type="button" onClick={inc} disabled={disabled}
-        className={`flex-shrink-0 border border-[#1a1a1a] flex items-center justify-center transition-colors ${disabled?'opacity-30':'hover:border-[#333] hover:text-[#d4ff00] text-[#888]'}`}
-        style={{ width: 28, borderLeft: 'none' }}>
-        <span style={{ fontSize: 16, lineHeight: 1, fontWeight: 600 }}>+</span>
-      </button>
-    </div>
+    <input type="number" inputMode="decimal" step={step} min="0"
+      value={isEmpty ? '' : value}
+      onChange={(e)=>handleInput(e.target.value)}
+      onFocus={(e)=>e.target.select()}
+      placeholder={placeholder}
+      disabled={disabled}
+      className="cell-input"
+      style={{ width: '100%' }} />
   );
 };
 
@@ -1014,7 +997,7 @@ const ExerciseEditor = ({ exercise, onSave, onCancel, onDelete }) => {
 const WEEKDAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const WEEKDAY_LABELS_FULL = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
 
-const WorkoutsView = ({ data, onStart, onEdit, pausedSession, onResume }) => {
+const WorkoutsView = ({ data, onStart, onEdit, pausedSession, onResume, onCopyTemplates }) => {
   const [showInactive, setShowInactive] = useState(false);
   // Ordena ativos: primeiro os que têm dias atribuídos (pelo menor dia), depois os sem dia (ordem de cadastro).
   // Domingo=0 vem antes.
@@ -1108,7 +1091,18 @@ const WorkoutsView = ({ data, onStart, onEdit, pausedSession, onResume }) => {
   return (
     <div className="pb-24">
       <Header title="Treinos" subtitle={`${activeWorkouts.length} ativos${inactiveWorkouts.length?` · ${inactiveWorkouts.length} inativos`:''}`}
-        right={<Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value, weekdays:[]})} size="sm">Novo</Btn>} />
+        right={
+          <div className="flex items-center gap-1">
+            {activeWorkouts.length > 0 && onCopyTemplates && (
+              <button onClick={()=>{ vibrate(15); onCopyTemplates(); }}
+                title="Copiar todos os treinos ativos como texto"
+                className="text-[#d4ff00] p-2 hover:opacity-80">
+                <Copy size={16} />
+              </button>
+            )}
+            <Btn icon={Plus} onClick={()=>onEdit({id:null, name:'', notes:'', exercises:[], color: WORKOUT_COLORS[0].value, weekdays:[]})} size="sm">Novo</Btn>
+          </div>
+        } />
 
       {/* Banner de treino pausado em segundo plano */}
       {pausedSession && (
@@ -1242,10 +1236,10 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
               })}
             </div>
           </div>
-          {/* Dias da semana (multi-seleção). Botões pequenos, todos numa linha. */}
+          {/* Dias da semana (multi-seleção). Botões pequenos em flex (igual ao seletor de cores). */}
           <div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Dias da semana</div>
-            <div className="grid grid-cols-7 gap-1">
+            <div className="flex gap-1.5 flex-wrap">
               {WEEKDAY_LABELS.map((label, idx) => {
                 const sel = (w.weekdays || []).includes(idx);
                 return (
@@ -1257,10 +1251,14 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
                         return { ...prev, weekdays: sel ? days.filter(d=>d!==idx) : [...days, idx].sort((a,b)=>a-b) };
                       });
                     }}
-                    className="h-7 border font-mono text-[10px] uppercase tracking-wider transition-colors"
-                    style={sel
-                      ? { borderColor: '#d4ff00', color: '#d4ff00', background: 'rgba(212,255,0,0.1)' }
-                      : { borderColor: '#1a1a1a', color: '#666' }}>
+                    className="font-mono text-[10px] uppercase tracking-wider transition-colors flex items-center justify-center flex-shrink-0"
+                    style={{
+                      width: 32, height: 24,
+                      borderWidth: 1, borderStyle: 'solid',
+                      borderColor: sel ? '#d4ff00' : '#1a1a1a',
+                      color: sel ? '#d4ff00' : '#666',
+                      background: sel ? 'rgba(212,255,0,0.1)' : 'transparent'
+                    }}>
                     {label}
                   </button>
                 );
@@ -1391,29 +1389,16 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
     vibrate(15);
   };
 
-  // Atualiza valor de uma série e propaga em massa apenas para as séries POSTERIORES.
-  // Lógica: dado oldValue (valor anterior dessa série naquele campo) e newValue,
-  // varre as séries À FRENTE (índice > i): se TODAS estão vazias OU TODAS são iguais
-  // a oldValue, sincroniza com newValue.
-  // Séries anteriores nunca são alteradas — assim o usuário pode personalizar de cima
-  // pra baixo livremente.
+  // Atualiza valor de uma série e propaga apenas para séries SUBSEQUENTES VAZIAS.
+  // Cada série posterior é avaliada individualmente: se está vazia, recebe o novo valor;
+  // se já tem qualquer valor (mesmo que igual ao anterior), é preservada.
   const updateRef = (i, field, newValue) => {
     setIt(prev => {
       const refs = prev.setRefs || [];
-      const oldValue = refs[i] ? refs[i][field] : '';
       const isEmpty = (v) => v === '' || v == null;
-
-      // Apenas séries posteriores são consideradas pra propagação.
-      const laterRefs = refs.slice(i + 1);
-      const shouldPropagate = laterRefs.every(r => {
-        const v = r[field];
-        if (isEmpty(v)) return true;
-        return Number(v) === Number(oldValue);
-      });
-
       const next = refs.map((r, j) => {
         if (j === i) return { ...r, [field]: newValue };
-        if (j > i && shouldPropagate) return { ...r, [field]: newValue };
+        if (j > i && isEmpty(r[field])) return { ...r, [field]: newValue };
         return r;
       });
       return { ...prev, setRefs: next };
@@ -1436,12 +1421,17 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
         </div>
       )}
 
+      {/* Tempo sugerido de intervalo entre séries (em segundos). */}
+      <Input label="Intervalo entre séries (s)" type="number" inputMode="numeric" value={it.restSeconds == null ? '' : it.restSeconds}
+        onChange={v=>setIt({...it, restSeconds: v==='' ? '' : Math.max(0, parseInt(v)||0)})}
+        placeholder="Ex: 90" suffix="seg" />
+
       <div>
         <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">
           Séries de referência ({(it.setRefs||[]).length})
         </div>
         <p className="text-[10px] font-mono text-[#666] mb-3 leading-relaxed">
-          Estes valores são pré-preenchidos no início do treino. Ao editar uma série, os valores são propagados apenas para as séries seguintes — e somente se elas estiverem vazias ou todas idênticas ao valor anterior.
+          Estes valores são pré-preenchidos no início do treino. Ao editar uma série, o valor é copiado apenas para as séries seguintes que ainda estiverem vazias.
         </p>
         <table className="set-table">
           <thead>
@@ -1488,21 +1478,34 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
   );
 };
 
-const buildInitialSets = (exDef, exTemplateItem) => {
+const buildInitialSets = (exDef, exTemplateItem, getLastRestForSet) => {
   const it = normalizeTemplateExercise(exTemplateItem, exDef);
   const refs = it.setRefs || [];
-  return refs.map(r => ({
-    completed: false,
-    weight: r.weight == null ? '' : r.weight,
-    reps: r.reps == null ? '' : r.reps,
-    time: r.time == null ? '' : r.time,
-  }));
+  // Pré-preenche o tempo de descanso na seguinte ordem de prioridade:
+  //   1. Descanso REAL da mesma série na última sessão (via getLastRestForSet)
+  //   2. restSeconds definido no template do exercício
+  //   3. vazio na primeira série (não faz sentido descanso antes da série 1)
+  const defaultRest = it.restSeconds && it.restSeconds > 0 ? it.restSeconds : '';
+  return refs.map((r, i) => {
+    let rest = '';
+    if (i > 0) {
+      const fromHistory = getLastRestForSet ? getLastRestForSet(i) : null;
+      if (fromHistory != null && fromHistory !== '') rest = fromHistory;
+      else rest = defaultRest;
+    }
+    return {
+      completed: false,
+      rest,
+      weight: r.weight == null ? '' : r.weight,
+      reps: r.reps == null ? '' : r.reps,
+      time: r.time == null ? '' : r.time,
+    };
+  });
 };
 
 /* ACTIVE WORKOUT */
 const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) => {
   const [showSummary, setShowSummary] = useState(false);
-  const [showWorkoutNotes, setShowWorkoutNotes] = useState(false);
   const [confirmExit, setConfirmExit] = useState(false);
   const [confirmPause, setConfirmPause] = useState(false);
   const [confirmIncomplete, setConfirmIncomplete] = useState(false);
@@ -1848,10 +1851,10 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
       </div>
 
       {active.notes && (
-        <button onClick={()=>setShowWorkoutNotes(true)} className="border-b border-[#1a1a1a] px-4 py-2 flex items-center gap-2 text-[#d4ff00] hover:bg-[#0a0a0a]">
-          <Edit3 size={14} />
-          <span className="text-[10px] font-mono uppercase tracking-widest truncate text-left">Notas do treino · toque para abrir</span>
-        </button>
+        <div className="border-b border-[#1a1a1a] px-4 py-3 bg-[#0a0a0a]" style={{ borderLeft: '3px solid #d4ff00' }}>
+          <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00] mb-1.5">Orientações gerais</div>
+          <p className="text-[12px] font-mono text-white leading-relaxed whitespace-pre-wrap">{active.notes}</p>
+        </div>
       )}
 
       <div className="flex-1 overflow-y-auto pb-8">
@@ -1886,19 +1889,6 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
         </div>
       </div>
 
-      <Modal open={showWorkoutNotes} onClose={()=>setShowWorkoutNotes(false)} title="Notas do treino"
-        footer={<Btn onClick={()=>setShowWorkoutNotes(false)} full>Fechar</Btn>}>
-        {active.notes && (
-          <div className="bg-[#0a0a0a] border-l-2 border-[#d4ff00] px-3 py-3">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00] mb-2">Observações fixas</div>
-            <p className="text-sm font-mono text-white whitespace-pre-wrap leading-relaxed">{active.notes}</p>
-          </div>
-        )}
-        <TextArea label="Anotação geral deste treino (hoje)" value={active.sessionNote||''}
-          onChange={v=>setActive({...active, sessionNote:v})}
-          placeholder="Ex: 'dormi pouco', 'sem cafeína', 'pump bom'..." rows={4} />
-      </Modal>
-
       {showSummary && <SummaryModal active={active} data={data} onConfirm={finish} onCancel={()=>setShowSummary(false)} onUpdateActive={setActive} />}
 
       {addingEx && <ExercisePicker exercises={data.exercises} title="Adicionar exercício" onPick={addExerciseToActive} onClose={()=>setAddingEx(false)} />}
@@ -1930,7 +1920,6 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
 
 const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse, onUpdateSet, onToggleSet, onAddSet, onRemoveSet, onUpdateLog, onSubstitute, onRemove, onShowHistory, onMoveUp, onMoveDown }) => {
   const [showActions, setShowActions] = useState(false);
-  const [showNotes, setShowNotes] = useState(false);
   // Anotação rápida: começa fechada se vazia, abre ao clicar e foca; fecha no blur se vazia.
   const [noteOpen, setNoteOpen] = useState(false);
   const noteRef = useRef(null);
@@ -2019,13 +2008,21 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
 
       {!isCollapsed && (
         <>
-          {/* Observações fixas (em cor neutra, não destaca durante o treino) */}
+          {/* Observações fixas: agora sempre visíveis em texto completo, sem modal */}
           {(exDef.notes || exLog.notes) && (
-            <button onClick={()=>setShowNotes(true)}
-              className="w-full px-4 py-2 text-left bg-[#050505] border-b border-[#0d0d0d] hover:bg-[#0a0a0a]">
-              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-0.5">Observações · toque</div>
-              <p className="text-[11px] font-mono text-[#888] leading-relaxed truncate">{exDef.notes || exLog.notes}</p>
-            </button>
+            <div className="w-full px-4 py-2 bg-[#050505] border-b border-[#0d0d0d]">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-0.5">Observações</div>
+              <p className="text-[11px] font-mono text-[#888] leading-relaxed whitespace-pre-wrap">{exDef.notes || exLog.notes}</p>
+              {exLog.restSeconds > 0 && (
+                <div className="text-[10px] font-mono text-[#888] mt-1">Descanso sugerido: <span className="text-[#d4ff00]">{exLog.restSeconds}s</span></div>
+              )}
+            </div>
+          )}
+          {/* Mostra descanso sugerido mesmo sem observações */}
+          {(!exDef.notes && !exLog.notes && exLog.restSeconds > 0) && (
+            <div className="w-full px-4 py-2 bg-[#050505] border-b border-[#0d0d0d]">
+              <div className="text-[10px] font-mono text-[#888]">Descanso sugerido: <span className="text-[#d4ff00]">{exLog.restSeconds}s</span></div>
+            </div>
           )}
 
           {/* Nota de execução ACIMA das séries */}
@@ -2078,6 +2075,7 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
             <thead>
               <tr>
                 <th className="col-num">#</th>
+                <th>Desc</th>
                 {isTime ? (
                   <>
                     <th>Carga</th>
@@ -2139,22 +2137,6 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
           </div>
         </button>
       </Modal>
-
-      <Modal open={showNotes} onClose={()=>setShowNotes(false)} title="Observações"
-        footer={<Btn onClick={()=>setShowNotes(false)} full>Fechar</Btn>}>
-        {exDef.notes && (
-          <div className="bg-[#0a0a0a] border-l-2 border-[#d4ff00] px-3 py-3">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-[#d4ff00] mb-2">Observação fixa</div>
-            <p className="text-sm font-mono text-white whitespace-pre-wrap leading-relaxed">{exDef.notes}</p>
-          </div>
-        )}
-        {exLog.notes && (
-          <div className="bg-[#0a0a0a] border-l-2 border-[#666] px-3 py-3">
-            <div className="text-[9px] font-mono uppercase tracking-widest text-[#888] mb-2">Observação do treino</div>
-            <p className="text-sm font-mono text-white whitespace-pre-wrap leading-relaxed">{exLog.notes}</p>
-          </div>
-        )}
-      </Modal>
     </div>
   );
 };
@@ -2186,6 +2168,7 @@ const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
       <tr className={completed ? 'completed' : ''}
         onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress}>
         <td className="col-num">{si+1}</td>
+        <td><NumStepper value={set.rest} onChange={v=>onUpdate({rest:v})} step={15} disabled={completed} /></td>
         {isTime ? (
           <>
             <td><NumStepper value={set.weight} onChange={v=>onUpdate({weight:v})} step={0.5} disabled={completed} /></td>
@@ -2537,6 +2520,58 @@ const HistoryView = ({ data, onSelect }) => {
 };
 
 /* Formato legível pra colar em IA. Inclui todos os dados da sessão. */
+/* Exporta todos os treinos ATIVOS como texto formatado pra colar em IA.
+   Inclui: nome, dias da semana, observações, e cada exercício com séries, faixas e descanso. */
+const activeTemplatesToText = (data) => {
+  const lines = [];
+  const active = data.workouts.filter(w => !w.inactive);
+  if (!active.length) return '';
+  lines.push(`# Meus treinos ativos (${active.length})`);
+  lines.push('');
+  active.forEach((w, idx) => {
+    lines.push(`## ${idx+1}. ${w.name || 'Sem nome'}`);
+    if (w.weekdays && w.weekdays.length) {
+      const days = [...w.weekdays].sort((a,b)=>a-b).map(d => WEEKDAY_LABELS_FULL[d]);
+      lines.push(`Dias: ${days.join(', ')}`);
+    }
+    if (w.notes) lines.push(`Observações: ${w.notes}`);
+    lines.push('');
+    if (!w.exercises.length) {
+      lines.push('  (sem exercícios)');
+      lines.push('');
+      return;
+    }
+    w.exercises.forEach((we, ei) => {
+      const def = data.exercises.find(e => e.id === we.exerciseId);
+      const name = (def && def.name) || 'Exercício removido';
+      const muscle = (def && def.muscle) || '—';
+      const isTime = def && def.type === 'time';
+      lines.push(`  ${ei+1}. ${name} (${muscle})`);
+      const refs = we.setRefs || [];
+      const numSets = refs.length || we.targetSets || 0;
+      if (!isTime && we.targetRepsMin && we.targetRepsMax) {
+        lines.push(`     Faixa alvo: ${we.targetRepsMin}-${we.targetRepsMax} reps`);
+      }
+      if (we.restSeconds && we.restSeconds > 0) {
+        lines.push(`     Descanso entre séries: ${we.restSeconds}s`);
+      }
+      lines.push(`     ${numSets} séries de referência:`);
+      refs.forEach((r, si) => {
+        if (isTime) {
+          const wPart = Number(r.weight) > 0 ? `${r.weight}kg · ` : '';
+          lines.push(`       ${si+1}: ${wPart}${r.time || '?'}s`);
+        } else {
+          const wVal = Number(r.weight) > 0 ? `${r.weight}kg` : 'peso corporal';
+          lines.push(`       ${si+1}: ${wVal} × ${r.reps || '?'} reps`);
+        }
+      });
+      if (we.notes) lines.push(`     Notas: ${we.notes}`);
+      lines.push('');
+    });
+  });
+  return lines.join('\n').trim();
+};
+
 const sessionToText = (session, data) => {
   const lines = [];
   lines.push(`Treino: ${session.templateName || 'Treino livre'}`);
@@ -2579,13 +2614,14 @@ const sessionToText = (session, data) => {
     }
 
     sets.forEach((s, si) => {
+      const restPart = (s.rest && Number(s.rest) > 0) ? ` (descanso ${s.rest}s)` : '';
       let line;
       if (isTime) {
         const wPart = Number(s.weight) > 0 ? `${s.weight}kg · ` : '';
-        line = `   Série ${si+1}: ${wPart}${s.time}s`;
+        line = `   Série ${si+1}${restPart}: ${wPart}${s.time}s`;
       } else {
         const oneRM = s.oneRM > 0 ? ` (1RM ${s.oneRM}kg)` : '';
-        line = `   Série ${si+1}: ${formatLoadReps(s.weight, s.reps)}${oneRM}`;
+        line = `   Série ${si+1}${restPart}: ${formatLoadReps(s.weight, s.reps)}${oneRM}`;
       }
       // Diff vs sessão anterior na mesma série
       const prevS = prevSets[si];
@@ -2621,8 +2657,9 @@ const sessionToText = (session, data) => {
 };
 
 const sessionToTSV = (session, data) => {
-  // Formato: data \t treino \t exercício \t grupo \t nota_exec \t carga1 \t reps1 \t carga2 \t reps2 \t ...
+  // Formato: data \t treino \t exercício \t grupo \t nota_exec \t descanso1 \t carga1 \t reps1 \t descanso2 \t carga2 \t reps2 \t ...
   // Sem cabeçalho. Todas as séries concluídas (sem limite). Vírgula como separador decimal.
+  // Descanso (em segundos) é o tempo de pausa ANTES daquela série.
   const dateStr = formatDateForExcel(session.date);
   const tname = session.templateName || 'Treino livre';
   const lines = [];
@@ -2634,13 +2671,14 @@ const sessionToTSV = (session, data) => {
     const sets = (e.sets||[]).filter(s=>s.completed);
     const cells = [dateStr, tname, exName, muscle, execScore];
     sets.forEach(s => {
+      const rest = s.rest === '' || s.rest == null ? '' : String(s.rest);
       const w = s.weight === '' || s.weight == null ? '' : String(s.weight).replace('.', ',');
       const r = s.reps === '' || s.reps == null ? '' : String(s.reps);
       const t = s.time === '' || s.time == null ? '' : String(s.time);
       if (def && def.type === 'time') {
-        cells.push(w); cells.push(t);
+        cells.push(rest); cells.push(w); cells.push(t);
       } else {
-        cells.push(w); cells.push(r);
+        cells.push(rest); cells.push(w); cells.push(r);
       }
     });
     lines.push(cells.join('\t'));
@@ -2803,6 +2841,9 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
                     return (
                       <div key={si} className="flex items-center gap-2 text-xs font-mono">
                         <span className="text-[#666] w-5 flex-shrink-0">{si+1}</span>
+                        {Number(s.rest) > 0 && (
+                          <span className="text-[#888] flex-shrink-0 text-[10px]" title="Descanso antes desta série">⏱{s.rest}s</span>
+                        )}
                         {isTime ? (
                           <span className="text-white flex-1 min-w-0 truncate">{Number(s.weight)>0?`${s.weight}kg · `:''}{s.time}s</span>
                         ) : (
@@ -3464,6 +3505,27 @@ function App() {
     setTab(newTab);
   }, []);
 
+  // Copia para clipboard com fallback para document.execCommand
+  // (que continua funcionando em contextos sem permissão de clipboard moderna).
+  const copyTextToClipboard = async (text, successMsg) => {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position='fixed'; ta.style.left='-9999px';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      }
+      toast(successMsg);
+    } catch (e) { console.error(e); toast('Erro ao copiar', 'error'); }
+  };
+  const handleCopyAllTemplates = () => {
+    const txt = activeTemplatesToText(data);
+    if (!txt) { toast('Nenhum treino ativo', 'error'); return; }
+    copyTextToClipboard(txt, 'Treinos copiados como texto');
+  };
+
   const startWorkout = (template) => {
     if (template.exercises.length === 0) return;
     // Limpa modal de "Treino finalizado" da sessão anterior, se ainda estiver no estado.
@@ -3478,6 +3540,23 @@ function App() {
         if (log && log.execScore != null) return log.execScore;
       }
       return 3;
+    };
+
+    // Helper: busca os descansos REAIS por índice de série da última sessão registrada
+    // do mesmo exercício. Retorna função (setIdx) -> rest|null.
+    const findLastRestsForExercise = (exerciseId) => {
+      for (const s of data.sessions) {
+        const log = s.exercises.find(e => e.exerciseId === exerciseId);
+        if (!log) continue;
+        const sets = (log.sets || []).filter(x => x.completed);
+        if (sets.length === 0) continue;
+        return (setIdx) => {
+          const set = sets[setIdx];
+          if (!set) return null;
+          return (set.rest === '' || set.rest == null) ? null : set.rest;
+        };
+      }
+      return () => null;
     };
 
     const session = {
@@ -3495,12 +3574,14 @@ function App() {
       exercises: template.exercises.map(we => {
         const def = data.exercises.find(d=>d.id===we.exerciseId);
         const norm = normalizeTemplateExercise(we, def);
-        const sets = def ? buildInitialSets(def, norm) : [];
+        const getLastRest = findLastRestsForExercise(we.exerciseId);
+        const sets = def ? buildInitialSets(def, norm, getLastRest) : [];
         return {
           exerciseId: we.exerciseId,
           targetSets: norm.targetSets,
           targetRepsMin: norm.targetRepsMin,
           targetRepsMax: norm.targetRepsMax,
+          restSeconds: norm.restSeconds || null,
           notes: norm.notes,
           sessionNote:'',
           execScore: findLastExecScore(we.exerciseId),
@@ -3561,7 +3642,8 @@ function App() {
       <div className="min-h-screen bg-black text-white">
         {tab==='home'      && <WorkoutsView data={data} onStart={startWorkout} onEdit={setEditingWorkout}
                                 pausedSession={paused && active ? active : null}
-                                onResume={()=>setPaused(false)} />}
+                                onResume={()=>setPaused(false)}
+                                onCopyTemplates={handleCopyAllTemplates} />}
         {tab==='exercises' && <ExercisesView data={data} setData={setData} />}
         {tab==='history'   && <HistoryView   data={data} onSelect={setViewingSession} />}
         {tab==='progress'  && <ProgressView  data={data} />}
