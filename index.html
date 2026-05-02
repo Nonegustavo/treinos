@@ -388,7 +388,7 @@ const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v12';
+const APP_VERSION = '2026-04-30-v13';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -1287,7 +1287,6 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-mono text-sm text-white truncate">{ex ? ex.name : '? Exercício removido'}</div>
-                    {/* Grupo muscular agora aparece junto com séries/reps */}
                     <div className="text-[10px] font-mono mt-0.5 flex items-center gap-2 flex-wrap">
                       {ex && ex.muscle && (
                         <span style={{ color: c }}>{ex.muscle}</span>
@@ -1297,6 +1296,9 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
                           ? ((we.setRefs||[]).map(s => s.time||'?').join('/') + 's')
                           : `${we.targetRepsMin || '?'}-${we.targetRepsMax || '?'} reps`}
                       </span>
+                      {we.restSeconds > 0 && (
+                        <span className="text-[#666]">⏱ {we.restSeconds}s</span>
+                      )}
                     </div>
                   </div>
                   <button onClick={()=>{ vibrate(15); setEditingExIdx(idx); }} className="text-[#888] hover:text-white p-2"><Edit3 size={14} /></button>
@@ -1481,20 +1483,21 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
 const buildInitialSets = (exDef, exTemplateItem, getLastRestForSet) => {
   const it = normalizeTemplateExercise(exTemplateItem, exDef);
   const refs = it.setRefs || [];
-  // Pré-preenche o tempo de descanso na seguinte ordem de prioridade:
+  // Pré-preenche o tempo de descanso na seguinte ordem de prioridade (TODAS as séries,
+  // incluindo a primeira — o descanso da primeira pode representar o intervalo desde o
+  // exercício anterior do treino):
   //   1. Descanso REAL da mesma série na última sessão (via getLastRestForSet)
   //   2. restSeconds definido no template do exercício
-  //   3. vazio na primeira série (não faz sentido descanso antes da série 1)
+  //   3. vazio se nada disponível
   const defaultRest = it.restSeconds && it.restSeconds > 0 ? it.restSeconds : '';
   return refs.map((r, i) => {
     let rest = '';
-    if (i > 0) {
-      const fromHistory = getLastRestForSet ? getLastRestForSet(i) : null;
-      if (fromHistory != null && fromHistory !== '') rest = fromHistory;
-      else rest = defaultRest;
-    }
+    const fromHistory = getLastRestForSet ? getLastRestForSet(i) : null;
+    if (fromHistory != null && fromHistory !== '') rest = fromHistory;
+    else rest = defaultRest;
     return {
       completed: false,
+      warmup: false,
       rest,
       weight: r.weight == null ? '' : r.weight,
       reps: r.reps == null ? '' : r.reps,
@@ -1984,21 +1987,17 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
                     : (Number(s.weight)>0
                         ? `${s.weight}×${s.reps===''||s.reps==null?'?':s.reps}`
                         : `pc×${s.reps===''||s.reps==null?'?':s.reps}`);
+                  // Aquecimento tem cor laranja-âmbar, completas verdes, demais cinza
+                  const color = s.completed ? DONE_GREEN : (s.warmup ? '#f59e0b' : '#666');
                   return (
-                    <span key={si} style={{ color: s.completed ? DONE_GREEN : '#666', marginRight: 8 }}>
+                    <span key={si} style={{ color, marginRight: 8 }}>
+                      {s.warmup && <span style={{ fontSize: 9, marginRight: 2 }}>AQ</span>}
                       {txt}
                     </span>
                   );
                 })}
               </div>
             )}
-          </div>
-          {/* Botões de mover ordem */}
-          <div className="flex flex-col gap-0.5 flex-shrink-0">
-            <button onClick={(e)=>{e.stopPropagation(); vibrate(15); onMoveUp && onMoveUp();}} disabled={idx===0}
-              className="text-[#666] disabled:opacity-20 hover:text-[#d4ff00] p-1"><ArrowUp size={12} /></button>
-            <button onClick={(e)=>{e.stopPropagation(); vibrate(15); onMoveDown && onMoveDown();}} disabled={idx===total-1}
-              className="text-[#666] disabled:opacity-20 hover:text-[#d4ff00] p-1"><ArrowDown size={12} /></button>
           </div>
           <button onClick={()=>{ vibrate(15); setShowActions(true); }} className="text-[#888] hover:text-white p-1 flex-shrink-0">
             <Settings size={16} />
@@ -2049,27 +2048,21 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
             </div>
           </div>
 
-          {/* Anotação rápida ACIMA das séries — começa oculta, abre ao clicar */}
-          <div className="px-4 py-2 border-b border-[#0d0d0d]">
-            {!noteOpen && !exLog.sessionNote ? (
-              <button type="button" onClick={openNote}
-                className="w-full text-left text-[10px] font-mono uppercase tracking-widest text-[#666] hover:text-[#d4ff00] py-1">
-                + Anotação rápida
-              </button>
-            ) : (
-              <>
-                <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Anotação rápida</div>
-                <textarea
-                  ref={noteRef}
-                  value={exLog.sessionNote || ''}
-                  onChange={(e)=>onUpdateLog({ sessionNote: e.target.value })}
-                  onBlur={handleNoteBlur}
-                  placeholder="Ex: 'última série caiu', 'ombro incomodando'..."
-                  rows={2}
-                  className="w-full bg-black border border-[#1a1a1a] focus:border-[#d4ff00] outline-none px-3 py-2 text-white font-mono text-xs placeholder:text-[#444] resize-none transition-colors" />
-              </>
-            )}
-          </div>
+          {/* Anotação rápida: só aparece se foi ativada via modal da engrenagem
+              OU se já tem texto. Se vazia E não-aberta, fica completamente oculta. */}
+          {(noteOpen || exLog.sessionNote) && (
+            <div className="px-4 py-2 border-b border-[#0d0d0d]">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-1.5">Anotação rápida</div>
+              <textarea
+                ref={noteRef}
+                value={exLog.sessionNote || ''}
+                onChange={(e)=>onUpdateLog({ sessionNote: e.target.value })}
+                onBlur={handleNoteBlur}
+                placeholder="Ex: 'última série caiu', 'ombro incomodando'..."
+                rows={2}
+                className="w-full bg-black border border-[#1a1a1a] focus:border-[#d4ff00] outline-none px-3 py-2 text-white font-mono text-xs placeholder:text-[#444] resize-none transition-colors" />
+            </div>
+          )}
 
           <table className="set-table">
             <thead>
@@ -2112,6 +2105,28 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
 
       <Modal open={showActions} onClose={()=>setShowActions(false)} title={exDef.name}
         footer={<Btn variant="ghost" onClick={()=>setShowActions(false)} full>Fechar</Btn>}>
+        {/* Reordenar */}
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={()=>{ vibrate(15); if (onMoveUp) onMoveUp(); setShowActions(false); }} disabled={idx===0}
+            className="px-3 py-3 border border-[#1a1a1a] hover:border-[#333] disabled:opacity-30 disabled:cursor-not-allowed text-left flex items-center gap-2">
+            <ArrowUp size={16} className="text-[#d4ff00]" />
+            <span className="font-mono text-sm text-white">Mover ↑</span>
+          </button>
+          <button onClick={()=>{ vibrate(15); if (onMoveDown) onMoveDown(); setShowActions(false); }} disabled={idx===total-1}
+            className="px-3 py-3 border border-[#1a1a1a] hover:border-[#333] disabled:opacity-30 disabled:cursor-not-allowed text-left flex items-center gap-2">
+            <ArrowDown size={16} className="text-[#d4ff00]" />
+            <span className="font-mono text-sm text-white">Mover ↓</span>
+          </button>
+        </div>
+        {/* Anotação rápida (abre a caixa inline na tela do treino) */}
+        <button onClick={()=>{ setShowActions(false); openNote(); }}
+          className="w-full px-3 py-3 border border-[#1a1a1a] hover:border-[#333] text-left flex items-center gap-3">
+          <Edit3 size={16} className="text-[#d4ff00]" />
+          <div>
+            <div className="font-mono text-sm text-white">{exLog.sessionNote ? 'Editar anotação rápida' : 'Adicionar anotação rápida'}</div>
+            <div className="text-[10px] font-mono text-[#666] mt-0.5">Aparece na tela do treino enquanto não estiver vazia</div>
+          </div>
+        </button>
         <button onClick={()=>{ setShowActions(false); onShowHistory(); }}
           className="w-full px-3 py-3 border border-[#1a1a1a] hover:border-[#333] text-left flex items-center gap-3">
           <HistoryIcon size={16} className="text-[#d4ff00]" />
@@ -2143,13 +2158,13 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
 
 const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
   const completed = !!set.completed;
+  const isWarmup = !!set.warmup;
   const oneRM = exDef.type === 'weight' && set.weight !== '' && set.reps !== '' ? calc1RM(set.weight, set.reps) : 0;
   const isTime = exDef.type === 'time';
   const [confirmDel, setConfirmDel] = useState(false);
   const pressTimer = useRef(null);
 
   const startPress = (e) => {
-    // Não dispara long-press se o pointerdown for em input ou botão
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'button' || tag === 'svg' || tag === 'path') return;
     if (pressTimer.current) clearTimeout(pressTimer.current);
@@ -2163,11 +2178,30 @@ const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
     if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; }
   };
 
+  // Toggle aquecimento: desabilita se a série já está marcada como concluída.
+  const toggleWarmup = () => {
+    if (completed) return;
+    vibrate(15);
+    onUpdate({ warmup: !isWarmup });
+  };
+
+  // Cor de aquecimento: laranja-amarelo (não conflita com volt nem com vermelho de remoção).
+  const WARMUP_COLOR = '#f59e0b';
+
   return (
     <>
       <tr className={completed ? 'completed' : ''}
-        onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress}>
-        <td className="col-num">{si+1}</td>
+        onPointerDown={startPress} onPointerUp={cancelPress} onPointerLeave={cancelPress} onPointerCancel={cancelPress}
+        style={isWarmup ? { background: completed ? '#0a0a0a' : 'rgba(245,158,11,0.05)' } : undefined}>
+        <td className="col-num">
+          {/* Botão pequeno: clica pra alternar aquecimento. Mostra "AQ" se aquecimento, senão o número. */}
+          <button type="button" onClick={toggleWarmup} disabled={completed}
+            title={isWarmup ? 'Aquecimento — clique para desmarcar' : 'Marcar como aquecimento'}
+            className={`w-full font-mono transition-colors ${completed ? 'cursor-not-allowed' : 'cursor-pointer hover:text-white'}`}
+            style={isWarmup ? { color: WARMUP_COLOR, fontSize: 10, fontWeight: 600 } : { color: '#666', fontSize: 11 }}>
+            {isWarmup ? 'AQ' : (si+1)}
+          </button>
+        </td>
         <td><NumStepper value={set.rest} onChange={v=>onUpdate({rest:v})} step={15} disabled={completed} /></td>
         {isTime ? (
           <>
@@ -2239,7 +2273,9 @@ const ExerciseHistoryModal = ({ exerciseId, data, onClose }) => {
                 <div className="space-y-0.5">
                   {sets.map((s, si) => (
                     <div key={si} className="flex items-center gap-3 text-xs font-mono">
-                      <span className="text-[#666] w-5">{si+1}</span>
+                      {s.warmup
+                        ? <span className="font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
+                        : <span className="text-[#666] w-5">{si+1}</span>}
                       {exDef && exDef.type==='time' ? (
                         <span className="text-white">{Number(s.weight)>0?`${s.weight}kg · `:''}{s.time}s</span>
                       ) : (
@@ -2594,20 +2630,21 @@ const sessionToText = (session, data) => {
     const prevLog = prevSession ? prevSession.exercises.find(ex => ex.exerciseId === e.exerciseId) : null;
     const prevSets = prevLog ? (prevLog.sets||[]).filter(s=>s.completed) : [];
 
-    // Maior 1RM histórico antes desta sessão
+    // Maior 1RM histórico antes desta sessão (ignorando aquecimentos)
     let priorMax1RM = 0;
     if (def && def.type === 'weight') {
       data.sessions.forEach(s2 => {
         if (s2.date >= session.date) return;
         const log = s2.exercises.find(ex => ex.exerciseId === e.exerciseId);
         if (!log) return;
-        (log.sets||[]).filter(x=>x.completed).forEach(x => {
+        (log.sets||[]).filter(x=>x.completed && !x.warmup).forEach(x => {
           if ((x.oneRM||0) > priorMax1RM) priorMax1RM = x.oneRM || 0;
         });
       });
     }
     const sets = (e.sets||[]).filter(s=>s.completed);
-    const sessionMax1RM = sets.reduce((m, s) => Math.max(m, s.oneRM || 0), 0);
+    // Pico desta sessão também ignora aquecimentos pra detecção de "novo recorde"
+    const sessionMax1RM = sets.filter(s=>!s.warmup).reduce((m, s) => Math.max(m, s.oneRM || 0), 0);
     const isBest1RM = !isTime && sessionMax1RM > 0 && sessionMax1RM > priorMax1RM;
     if (isBest1RM) {
       lines.push(`   ★ NOVO MELHOR 1RM: ${sessionMax1RM}kg (anterior: ${priorMax1RM || 'sem registro'}kg)`);
@@ -2615,13 +2652,15 @@ const sessionToText = (session, data) => {
 
     sets.forEach((s, si) => {
       const restPart = (s.rest && Number(s.rest) > 0) ? ` (descanso ${s.rest}s)` : '';
+      // Identifica como aquecimento ou série numerada (numeração só conta séries não-aquecimento)
+      const labelPrefix = s.warmup ? 'Aquecimento' : `Série ${si+1}`;
       let line;
       if (isTime) {
         const wPart = Number(s.weight) > 0 ? `${s.weight}kg · ` : '';
-        line = `   Série ${si+1}${restPart}: ${wPart}${s.time}s`;
+        line = `   ${labelPrefix}${restPart}: ${wPart}${s.time}s`;
       } else {
         const oneRM = s.oneRM > 0 ? ` (1RM ${s.oneRM}kg)` : '';
-        line = `   Série ${si+1}${restPart}: ${formatLoadReps(s.weight, s.reps)}${oneRM}`;
+        line = `   ${labelPrefix}${restPart}: ${formatLoadReps(s.weight, s.reps)}${oneRM}`;
       }
       // Diff vs sessão anterior na mesma série
       const prevS = prevSets[si];
@@ -2769,7 +2808,7 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
         const prevSets = prevLog ? (prevLog.sets||[]).filter(s=>s.completed) : [];
 
         // Para cada série, calcula 1RM máximo HISTÓRICO até antes desta sessão
-        // (pra marcar "MELHOR 1RM" corretamente).
+        // (pra marcar "MELHOR 1RM" corretamente). Ignora aquecimentos.
         const priorMax1RM = (() => {
           if (!def || def.type !== 'weight') return 0;
           let max = 0;
@@ -2777,14 +2816,14 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
             if (s2.date >= session.date) return;
             const log = s2.exercises.find(ex => ex.exerciseId === e.exerciseId);
             if (!log) return;
-            (log.sets||[]).filter(x=>x.completed).forEach(x => {
+            (log.sets||[]).filter(x=>x.completed && !x.warmup).forEach(x => {
               if ((x.oneRM||0) > max) max = x.oneRM || 0;
             });
           });
           return max;
         })();
-        // 1RM máximo desta sessão
-        const sessionMax1RM = sets.reduce((m, s) => Math.max(m, s.oneRM || 0), 0);
+        // 1RM máximo desta sessão (ignorando aquecimentos)
+        const sessionMax1RM = sets.filter(s=>!s.warmup).reduce((m, s) => Math.max(m, s.oneRM || 0), 0);
         const isBest1RM = !isTime && sessionMax1RM > 0 && sessionMax1RM > priorMax1RM;
 
         // Diff de execScore vs sessão anterior do mesmo exercício
@@ -2840,7 +2879,11 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
                     const diffColor = diffStr && diffStr.startsWith('+') ? '#84cc16' : '#ff4757';
                     return (
                       <div key={si} className="flex items-center gap-2 text-xs font-mono">
-                        <span className="text-[#666] w-5 flex-shrink-0">{si+1}</span>
+                        {s.warmup ? (
+                          <span className="flex-shrink-0 font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
+                        ) : (
+                          <span className="text-[#666] w-5 flex-shrink-0">{si+1}</span>
+                        )}
                         {Number(s.rest) > 0 && (
                           <span className="text-[#888] flex-shrink-0 text-[10px]" title="Descanso antes desta série">⏱{s.rest}s</span>
                         )}
@@ -2879,7 +2922,10 @@ const ProgressView = ({ data }) => {
     data.sessions.forEach(s => {
       s.exercises.forEach(e => {
         if (!map[e.exerciseId]) map[e.exerciseId] = [];
-        const sets = (e.sets||[]).filter(x=>x.completed);
+        // Apenas séries concluídas E não-aquecimento contam pras estatísticas de progresso.
+        // Aquecimentos não devem afetar 1RM, carga máxima, volume etc.
+        const allCompleted = (e.sets||[]).filter(x=>x.completed);
+        const sets = allCompleted.filter(x => !x.warmup);
         if (!sets.length) return;
         const max1RM   = Math.max(...sets.map(x=>x.oneRM ||0));
         const maxW     = Math.max(...sets.map(x=>Number(x.weight)||0));
@@ -2892,7 +2938,8 @@ const ProgressView = ({ data }) => {
           sessionId: s.id,
           execScore: e.execScore || null,
           max1RM, maxW, maxReps, maxTime, volume,
-          sets, setsCount: sets.length
+          // sets aqui inclui aquecimento também pra mostrar no histórico detalhado
+          sets: allCompleted, setsCount: allCompleted.length
         });
       });
     });
@@ -2988,7 +3035,9 @@ const ProgressView = ({ data }) => {
                 <div className="space-y-0.5">
                   {s.sets.map((set, si) => (
                     <div key={si} className="flex items-center gap-3 text-xs font-mono">
-                      <span className="text-[#666] w-5">{si+1}</span>
+                      {set.warmup
+                        ? <span className="font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
+                        : <span className="text-[#666] w-5">{si+1}</span>}
                       {isTime ? <span className="text-white">{Number(set.weight)>0?`${set.weight}kg · `:''}{set.time}s</span>
                         : (<><span className="text-white">{formatLoadReps(set.weight, set.reps)}</span>{set.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {set.oneRM}kg</span>}</>)}
                     </div>
