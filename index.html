@@ -388,7 +388,9 @@ const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v14';
+const TIMER_PREFS_KEY = 'gymapp-timer-prefs-v1';
+const TIMER_STATE_KEY = 'gymapp-timer-state-v1';
+const APP_VERSION = '2026-04-30-v15';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -456,6 +458,101 @@ const INTENSITY_COLORS = ['', '#06b6d4', '#84cc16', '#fbbf24', '#f97316', '#ef44
 
 // Vibração tátil curta para feedback de toque. Falha silenciosa em iOS Safari.
 const vibrate = (ms = 20) => { try { navigator.vibrate && navigator.vibrate(ms); } catch(e){} };
+
+/* Web Audio: gera beep sintético quando o timer termina.
+   Reaproveita o mesmo AudioContext entre chamadas pra evitar sobrecarga.
+   Em iOS o contexto começa "suspended" — a primeira interação do usuário (clique)
+   precisa chamar .resume() pra desbloquear. Por isso temos o helper unlockAudio. */
+let _audioCtx = null;
+const getAudioCtx = () => {
+  if (!_audioCtx) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      _audioCtx = new Ctx();
+    } catch (e) { return null; }
+  }
+  return _audioCtx;
+};
+const unlockAudio = () => {
+  // Chamar dentro de qualquer handler de clique pra desbloquear áudio em iOS Safari.
+  const ctx = getAudioCtx();
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(()=>{});
+};
+// Beep sintético: sequência de 3 tons curtos de 800Hz, total ~600ms.
+const playBeep = () => {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(()=>{});
+  const now = ctx.currentTime;
+  for (let i = 0; i < 3; i++) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 880;
+    osc.type = 'sine';
+    const start = now + i * 0.22;
+    const end = start + 0.16;
+    gain.gain.setValueAtTime(0, start);
+    gain.gain.linearRampToValueAtTime(0.35, start + 0.01);
+    gain.gain.linearRampToValueAtTime(0, end);
+    osc.start(start);
+    osc.stop(end + 0.05);
+  }
+};
+
+/* MediaSession + áudio "silencioso" pra manter timer ativo com tela bloqueada.
+   Estratégia: criar um <audio> com um data URI de áudio extremamente baixo volume
+   tocando em loop. Isso engana o navegador a manter o JavaScript do app ativo.
+   Compensação: o telefone exibe um indicador de mídia ativa e pode conflitar
+   com apps de música. Por isso é opt-in nas configurações. */
+let _silentAudio = null;
+const startKeepAlive = () => {
+  if (_silentAudio) return;
+  try {
+    const audio = document.createElement('audio');
+    // 1s de silêncio em WAV (44.1kHz mono 16bit) — encodado em base64.
+    // Mantemos bem curto e ativamos loop=true.
+    audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQQAAAAAAAAA';
+    audio.loop = true;
+    audio.volume = 0.001; // praticamente inaudível; só pra manter mídia ativa
+    audio.play().catch(()=>{});
+    _silentAudio = audio;
+    if ('mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: 'Treino em andamento',
+          artist: 'Treino',
+        });
+      } catch(e){}
+    }
+  } catch(e) { console.warn('keepAlive failed:', e); }
+};
+const stopKeepAlive = () => {
+  if (_silentAudio) {
+    try { _silentAudio.pause(); _silentAudio.src = ''; } catch(e){}
+    _silentAudio = null;
+  }
+};
+
+/* Wake Lock: mantém a tela acesa durante o treino. API moderna; falha silenciosa
+   onde não suportada (iOS Safari mais antigo). Não bloqueia features. */
+let _wakeLock = null;
+const acquireWakeLock = async () => {
+  if (_wakeLock) return;
+  try {
+    if ('wakeLock' in navigator && navigator.wakeLock.request) {
+      _wakeLock = await navigator.wakeLock.request('screen');
+      _wakeLock.addEventListener && _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+    }
+  } catch(e) {}
+};
+const releaseWakeLock = () => {
+  if (_wakeLock) {
+    try { _wakeLock.release && _wakeLock.release(); } catch(e){}
+    _wakeLock = null;
+  }
+};
 
 // Formatação de carga: 0 ou vazio = "peso corporal". Usado em históricos e relatórios.
 const formatLoadReps = (w, r) => {
@@ -591,6 +688,22 @@ const formatSyncTime = (ts) => {
   if (diff < 7) return `${diff} dias atrás · ${d.toLocaleDateString('pt-BR')}`;
   return d.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 };
+
+/* Timer prefs: configurações persistentes do timer de descanso. */
+const DEFAULT_TIMER_PREFS = {
+  enabled: true,    // timer automático ativo
+  sound: true,      // tocar beep ao terminar
+  vibration: true,  // vibrar ao terminar
+  keepAlive: false, // manter app ativo com tela bloqueada (consome bateria, conflita com música)
+};
+const loadTimerPrefs = () => ({ ...DEFAULT_TIMER_PREFS, ...loadLS(TIMER_PREFS_KEY, {}) });
+const saveTimerPrefs = (p) => saveLS(TIMER_PREFS_KEY, p);
+
+/* Timer state: persistido em localStorage pra sobreviver a reload.
+   Quando null, não há timer ativo. Quando tem valor:
+   { startedAt, targetSeconds, exerciseId, lastSetIdx, notified } */
+const loadTimerState = () => loadLS(TIMER_STATE_KEY, null);
+const saveTimerState = (s) => { if (s) saveLS(TIMER_STATE_KEY, s); else localStorage.removeItem(TIMER_STATE_KEY); };
 
 const driveInitTokenClient = (clientId, callback) => {
   if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
@@ -1543,6 +1656,36 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
   const [historyExId, setHistoryExId] = useState(null);
   const [collapsed, setCollapsed] = useState(() => loadLS(COLLAPSED_KEY, {}));
 
+  // Configurações persistentes do timer (toggles em Config).
+  const [timerPrefs, setTimerPrefs] = useState(() => loadTimerPrefs());
+  // Estado do timer ativo: null quando não há timer, ou
+  // { startedAt, targetSeconds, exerciseId, lastSetIdx, notified }
+  // Ao recarregar, descartamos timers muito antigos (> 1h) — provavelmente o usuário
+  // saiu/fechou e voltou bem depois, não faz sentido retomar contagem.
+  const [timer, setTimerState] = useState(() => {
+    const saved = loadTimerState();
+    if (!saved) return null;
+    const ageMs = Date.now() - (saved.startedAt || 0);
+    if (ageMs > 60 * 60 * 1000) {
+      // Limpa o storage também
+      saveTimerState(null);
+      return null;
+    }
+    // Se o timer já terminou enquanto a página estava fora, marca como notified
+    // pra não disparar feedback "atrasado" (já passou o momento)
+    if (saved.targetSeconds && ageMs / 1000 >= saved.targetSeconds) {
+      return { ...saved, notified: true };
+    }
+    return saved;
+  });
+  // Re-render forçado a cada segundo enquanto timer está ativo (pra atualizar contador).
+  const [, setTick] = useState(0);
+
+  const setTimer = useCallback((next) => {
+    setTimerState(next);
+    saveTimerState(next);
+  }, []);
+
   // Salva o estado de collapse por exercício/sessão
   useEffect(() => { saveLS(COLLAPSED_KEY, collapsed); }, [collapsed]);
 
@@ -1567,6 +1710,64 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
     const t = setInterval(() => setActive(prev => prev ? {...prev, elapsed: Date.now() - prev.startedAt} : prev), 1000);
     return () => clearInterval(t);
   }, [setActive]);
+
+  /* TIMER: tick a cada segundo enquanto há timer ativo (pra atualizar contador na tela)
+     e detecta o momento em que cruza targetSeconds pra disparar beep+vibração+notificação.
+     Rodamos um setInterval só quando timer está ativo (eficiente). */
+  useEffect(() => {
+    if (!timer) return;
+    const tick = () => {
+      setTick(t => t + 1);
+      // Cruzou o tempo alvo? Dispara feedback uma única vez.
+      if (timer.targetSeconds && !timer.notified) {
+        const elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
+        if (elapsed >= timer.targetSeconds) {
+          // Marca como notificado pra evitar repetição
+          setTimer({ ...timer, notified: true });
+          // Vibração forte
+          if (timerPrefs.vibration) vibrate(400);
+          // Beep
+          if (timerPrefs.sound) playBeep();
+          // Notificação OS (tap volta foco pra app, que pode interpretar como "iniciar série")
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            try {
+              const n = new Notification('Descanso completo', {
+                body: 'Toque para iniciar a próxima série',
+                tag: 'rest-timer',
+                silent: false,
+                requireInteraction: false,
+              });
+              n.onclick = () => {
+                window.focus();
+                n.close();
+                // Quando o usuário toca na notificação, o handler abaixo (handleStartSet)
+                // é chamado via flag. Não dá pra chamar diretamente pq esse closure
+                // vai estar stale. Em vez disso, marcamos uma flag e detectamos no foco.
+                window.__pendingStartSetFromNotification = true;
+              };
+              setTimeout(() => { try { n.close(); } catch(e){} }, 30000);
+            } catch(e){}
+          }
+        }
+      }
+    };
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [timer && timer.startedAt, timer && timer.targetSeconds, timer && timer.notified, timerPrefs.sound, timerPrefs.vibration]);
+
+  /* Keep-alive e Wake Lock: ativados quando treino inicia E timer está habilitado E
+     o usuário ligou "manter ativo" nas configurações. Liberados ao pausar/finalizar. */
+  useEffect(() => {
+    if (!active) return;
+    if (timerPrefs.keepAlive) {
+      startKeepAlive();
+      acquireWakeLock();
+    }
+    return () => {
+      stopKeepAlive();
+      releaseWakeLock();
+    };
+  }, [active && active.id, timerPrefs.keepAlive]);
 
   // Notificação de lembrete: dispara 2h após o início do treino, uma única vez por sessão.
   // Funciona com a aba aberta (mesmo em background). Permissão pedida na primeira vez.
@@ -1679,8 +1880,88 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
         exercises: prev.exercises.map((e, i) => i === idx ? { ...e, sets: newSets } : e)
       }));
       vibrate(80);
+
+      // === TIMER DE DESCANSO ===
+      // Inicia automaticamente se: timer habilitado E o exercício tem restSeconds definido.
+      // Tempo alvo vem do RESTSECONDS DO EXERCÍCIO, não do campo rest da série
+      // (decisão consciente: o timer é uma sugestão fixa do plano).
+      if (timerPrefs.enabled && exLog.restSeconds && exLog.restSeconds > 0) {
+        setTimer({
+          startedAt: Date.now(),
+          targetSeconds: exLog.restSeconds,
+          exerciseId: exLog.exerciseId,
+          exerciseIdx: idx,
+          lastSetIdx: si,
+          notified: false,
+        });
+        // Pede permissão de notificação na primeira vez que o timer inicia
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+          try { Notification.requestPermission(); } catch(e){}
+        }
+      }
     }
   };
+
+  /* Handler "Iniciar próxima série": chamado pelo botão na barra do timer
+     OU quando o usuário toca na notificação do fim do descanso.
+     Encontra a próxima série pendente (do exercício atual ou do próximo) e
+     preenche o campo rest dela com o tempo realmente decorrido desde o fim
+     da série anterior. Depois encerra o timer. */
+  const handleStartSet = useCallback(() => {
+    if (!timer) return;
+    unlockAudio(); // desbloqueia áudio em iOS no primeiro clique
+    vibrate(20);
+    const elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
+
+    setActive(prev => {
+      if (!prev) return prev;
+      // Procura a próxima série pendente (não-completed) começando do exercício atual
+      // a partir da série após a que iniciou o timer. Se não achar, vai pro próximo.
+      let foundExIdx = -1, foundSetIdx = -1;
+      const startExIdx = timer.exerciseIdx != null ? timer.exerciseIdx : 0;
+      const startSetIdx = timer.lastSetIdx != null ? timer.lastSetIdx + 1 : 0;
+      outer: for (let ei = startExIdx; ei < prev.exercises.length; ei++) {
+        const ex = prev.exercises[ei];
+        const fromSi = ei === startExIdx ? startSetIdx : 0;
+        for (let si = fromSi; si < (ex.sets || []).length; si++) {
+          if (!ex.sets[si].completed) {
+            foundExIdx = ei; foundSetIdx = si; break outer;
+          }
+        }
+      }
+      if (foundExIdx < 0) return prev;
+      const newExs = prev.exercises.map((ex, ei) => {
+        if (ei !== foundExIdx) return ex;
+        const newSets = ex.sets.map((s, si) => {
+          if (si !== foundSetIdx) return s;
+          return { ...s, rest: elapsed };
+        });
+        return { ...ex, sets: newSets };
+      });
+      return { ...prev, exercises: newExs };
+    });
+
+    setTimer(null);
+  }, [timer, setActive, setTimer]);
+
+  /* Detecta tap na notificação ao voltar foco pra aba.
+     A notificação seta uma flag global; ao receber 'focus' a janela, chamamos
+     handleStartSet. Isso é necessário porque o handler dentro do Notification.onclick
+     captura uma versão obsoleta de handleStartSet (closure stale). */
+  useEffect(() => {
+    const onFocus = () => {
+      if (window.__pendingStartSetFromNotification) {
+        window.__pendingStartSetFromNotification = false;
+        handleStartSet();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [handleStartSet]);
+
+  /* Função pra dispensar manualmente o timer sem registrar tempo (caso o usuário
+     queira simplesmente cancelar). Usado no botão de fechar. */
+  const dismissTimer = () => { vibrate(15); setTimer(null); };
 
   const addSetRow = (idx) => {
     const exLog = active.exercises[idx];
@@ -1835,6 +2116,8 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
       }
       return { ...d, sessions: [session, ...d.sessions], workouts };
     });
+    // Limpa o timer de descanso ao finalizar
+    setTimer(null);
     setActive(null);
     onFinish(session);
   };
@@ -1884,6 +2167,51 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
           )}
           <button onClick={tryFinish} className="text-[#d4ff00] p-1" title="Finalizar"><Check size={22} /></button>
         </div>
+        {/* TIMER DE DESCANSO — aparece entre header e barra de progresso quando ativo */}
+        {timer && (() => {
+          const elapsedSec = Math.floor((Date.now() - timer.startedAt) / 1000);
+          const target = timer.targetSeconds || 0;
+          const overTarget = target > 0 && elapsedSec >= target;
+          const pct = target > 0 ? Math.min(elapsedSec / target, 1) : 0;
+          const accent = overTarget ? '#84cc16' : '#d4ff00'; // verde quando passa do alvo
+          const fmt = (s) => {
+            const m = Math.floor(s / 60);
+            const ss = s % 60;
+            return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+          };
+          return (
+            <div className="border-t border-[#1a1a1a] relative" style={{ background: '#050505' }}>
+              {/* Barra de fundo preenchendo */}
+              <div className="absolute top-0 left-0 h-full transition-all duration-500"
+                style={{ width: `${pct * 100}%`, background: overTarget ? 'rgba(132,204,22,0.12)' : 'rgba(212,255,0,0.08)' }} />
+              <div className="relative flex items-center px-3 py-2 gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[9px] font-mono uppercase tracking-widest mb-0.5"
+                    style={{ color: overTarget ? accent : '#888' }}>
+                    {overTarget ? 'Descanso completo' : 'Descansando'}
+                  </div>
+                  <div className="font-display text-lg leading-none tracking-wider" style={{ color: accent }}>
+                    {fmt(elapsedSec)}{target > 0 ? <span className="text-[#666] text-sm ml-1">/ {fmt(target)}</span> : null}
+                  </div>
+                </div>
+                <button onClick={handleStartSet}
+                  className="flex-shrink-0 px-4 py-2.5 font-mono text-xs uppercase tracking-wider transition-colors"
+                  style={{
+                    background: accent,
+                    color: '#000',
+                    fontWeight: 600,
+                  }}>
+                  ▶ Iniciar série
+                </button>
+                <button onClick={dismissTimer}
+                  title="Fechar timer (sem registrar tempo)"
+                  className="flex-shrink-0 text-[#666] hover:text-white p-2">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          );
+        })()}
         {/* Barra de progresso. Largura proporcional ao avanço total. */}
         <div className="h-1 bg-[#0a0a0a] relative overflow-hidden">
           <div className="absolute top-0 left-0 h-full bg-[#d4ff00] transition-all duration-300" style={{ width: `${progress.pct * 100}%` }} />
@@ -1947,7 +2275,7 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
 
       <Confirm open={confirmExit} title="Sair do treino?"
         message="O treino em andamento será descartado e não vai pro histórico."
-        onConfirm={()=>{setActive(null); onFinish(null);}} onCancel={()=>setConfirmExit(false)} danger />
+        onConfirm={()=>{setTimer(null); setActive(null); onFinish(null);}} onCancel={()=>setConfirmExit(false)} danger />
 
       <Confirm open={confirmPause} title="Pausar treino?"
         message="O treino será pausado e ficará disponível para retomar na tela de Treinos. Nenhum dado será perdido."
@@ -3237,6 +3565,14 @@ const ConfigView = ({ data, setData, toast }) => {
   const [syncTimes, setSyncTimes] = useState(loadSyncTimes());
   const bumpSync = (key) => setSyncTimes(recordSyncTime(key));
 
+  // Timer prefs
+  const [timerPrefs, setTimerPrefsState] = useState(() => loadTimerPrefs());
+  const updateTimerPref = (key, val) => {
+    const next = { ...timerPrefs, [key]: val };
+    setTimerPrefsState(next);
+    saveTimerPrefs(next);
+  };
+
   const handleSetClientId = (cid) => {
     const newCfg = { ...config, clientId: cid };
     setConfig(newCfg);
@@ -3402,6 +3738,35 @@ const ConfigView = ({ data, setData, toast }) => {
               <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mt-1">Sessões</div>
             </div>
           </div>
+        </div>
+
+        {/* TIMER DE DESCANSO */}
+        <div className="border border-[#1a1a1a] p-4 space-y-3">
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#d4ff00] mb-1">Timer de descanso</div>
+            <p className="text-[10px] font-mono text-[#666] leading-relaxed">
+              Inicia automaticamente ao marcar uma série, com base no "Intervalo entre séries" definido no exercício.
+            </p>
+          </div>
+          {[
+            { key: 'enabled', label: 'Timer automático', sub: 'Inicia o cronômetro ao marcar série como feita' },
+            { key: 'sound', label: 'Som', sub: 'Beep ao terminar o descanso' },
+            { key: 'vibration', label: 'Vibração', sub: 'Vibra ao terminar o descanso' },
+            { key: 'keepAlive', label: 'Manter app ativo', sub: 'Mantém timer rodando com tela bloqueada (consome bateria, conflita com música)' },
+          ].map(opt => (
+            <button key={opt.key} type="button"
+              onClick={()=>{ vibrate(15); updateTimerPref(opt.key, !timerPrefs[opt.key]); }}
+              className="w-full flex items-center justify-between gap-3 px-3 py-2.5 border border-[#1a1a1a] hover:border-[#333] transition-colors text-left">
+              <div className="flex-1 min-w-0">
+                <div className="font-mono text-sm text-white">{opt.label}</div>
+                <div className="text-[10px] font-mono text-[#666] mt-0.5 leading-relaxed">{opt.sub}</div>
+              </div>
+              <div className="flex-shrink-0 font-mono text-xs uppercase tracking-wider"
+                style={{ color: timerPrefs[opt.key] ? '#d4ff00' : '#666' }}>
+                {timerPrefs[opt.key] ? 'ON' : 'OFF'}
+              </div>
+            </button>
+          ))}
         </div>
 
         {/* DRIVE SECTION */}
