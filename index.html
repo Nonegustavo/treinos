@@ -388,7 +388,7 @@ const DRIVE_CONFIG_KEY = 'gymapp-drive-config-v1';
 const DRIVE_TOKEN_KEY = 'gymapp-drive-token-v1';
 const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
-const APP_VERSION = '2026-04-30-v13';
+const APP_VERSION = '2026-04-30-v14';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -1024,7 +1024,9 @@ const WorkoutsView = ({ data, onStart, onEdit, pausedSession, onResume, onCopyTe
       w.exercises.forEach(we => {
         const ex = data.exercises.find(e=>e.id===we.exerciseId);
         const muscle = (ex && ex.muscle) || 'Sem grupo';
-        const sets = (we.setRefs || []).length || we.targetSets || 0;
+        // Conta apenas séries de trabalho (não-aquecimento) na agregação semanal.
+        const refs = we.setRefs || [];
+        const sets = refs.length ? refs.filter(r => !r.warmup).length : (we.targetSets || 0);
         m[muscle] = (m[muscle] || 0) + (sets * multiplier);
       });
     });
@@ -1038,7 +1040,9 @@ const WorkoutsView = ({ data, onStart, onEdit, pausedSession, onResume, onCopyTe
     w.exercises.forEach(we => {
       const ex = data.exercises.find(e=>e.id===we.exerciseId);
       const m = (ex && ex.muscle) || 'Sem grupo';
-      const sets = (we.setRefs || []).length || we.targetSets || 0;
+      // Card individual também ignora aquecimentos no total
+      const refs = we.setRefs || [];
+      const sets = refs.length ? refs.filter(r => !r.warmup).length : (we.targetSets || 0);
       muscleSetCounts[m] = (muscleSetCounts[m] || 0) + sets;
     });
     const muscleEntries = Object.entries(muscleSetCounts).sort((a,b)=>b[1]-a[1]);
@@ -1433,7 +1437,7 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
           Séries de referência ({(it.setRefs||[]).length})
         </div>
         <p className="text-[10px] font-mono text-[#666] mb-3 leading-relaxed">
-          Estes valores são pré-preenchidos no início do treino. Ao editar uma série, o valor é copiado apenas para as séries seguintes que ainda estiverem vazias.
+          Estes valores são pré-preenchidos no início do treino. Ao editar uma série, o valor é copiado apenas para as séries seguintes que ainda estiverem vazias. Toque no número da série para marcá-la como aquecimento.
         </p>
         <table className="set-table">
           <thead>
@@ -1443,22 +1447,43 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
             </tr>
           </thead>
           <tbody>
-            {(it.setRefs||[]).map((r,i)=>(
-              <tr key={i}>
-                <td className="col-num">{i+1}</td>
-                {isTime ? (
-                  <>
-                    <td><NumStepper value={r.weight} onChange={v=>updateRef(i, 'weight', v)} step={0.5} /></td>
-                    <td><NumStepper value={r.time} onChange={v=>updateRef(i, 'time', v)} step={1} /></td>
-                  </>
-                ) : (
-                  <>
-                    <td><NumStepper value={r.weight} onChange={v=>updateRef(i, 'weight', v)} step={0.5} /></td>
-                    <td><NumStepper value={r.reps} onChange={v=>updateRef(i, 'reps', v)} step={1} /></td>
-                  </>
-                )}
-              </tr>
-            ))}
+            {(() => {
+              let validIdx = 0;
+              return (it.setRefs||[]).map((r,i) => {
+                const isAQ = !!r.warmup;
+                const num = isAQ ? null : (++validIdx);
+                const toggleWarmup = () => {
+                  vibrate(15);
+                  setIt(prev => ({
+                    ...prev,
+                    setRefs: prev.setRefs.map((rr, j) => j === i ? { ...rr, warmup: !rr.warmup } : rr)
+                  }));
+                };
+                return (
+                  <tr key={i} style={isAQ ? { background: 'rgba(245,158,11,0.05)' } : undefined}>
+                    <td className="col-num">
+                      <button type="button" onClick={toggleWarmup}
+                        title={isAQ ? 'Aquecimento — clique para desmarcar' : 'Marcar como aquecimento'}
+                        className="w-full font-mono cursor-pointer hover:text-white transition-colors"
+                        style={isAQ ? { color: '#f59e0b', fontSize: 10, fontWeight: 600 } : { color: '#666', fontSize: 11 }}>
+                        {isAQ ? 'AQ' : num}
+                      </button>
+                    </td>
+                    {isTime ? (
+                      <>
+                        <td><NumStepper value={r.weight} onChange={v=>updateRef(i, 'weight', v)} step={0.5} /></td>
+                        <td><NumStepper value={r.time} onChange={v=>updateRef(i, 'time', v)} step={1} /></td>
+                      </>
+                    ) : (
+                      <>
+                        <td><NumStepper value={r.weight} onChange={v=>updateRef(i, 'weight', v)} step={0.5} /></td>
+                        <td><NumStepper value={r.reps} onChange={v=>updateRef(i, 'reps', v)} step={1} /></td>
+                      </>
+                    )}
+                  </tr>
+                );
+              });
+            })()}
           </tbody>
         </table>
         {/* Botões de adicionar/remover série ao final da tabela */}
@@ -1497,7 +1522,7 @@ const buildInitialSets = (exDef, exTemplateItem, getLastRestForSet) => {
     else rest = defaultRest;
     return {
       completed: false,
-      warmup: false,
+      warmup: !!r.warmup,
       rest,
       weight: r.weight == null ? '' : r.weight,
       reps: r.reps == null ? '' : r.reps,
@@ -1628,8 +1653,17 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
     };
 
     if (set.completed) {
-      // Desmarca apenas a série clicada.
-      updateSet(idx, si, { completed: false });
+      // Desmarca esta série E todas as séries SEGUINTES que estiverem marcadas.
+      // Simétrico ao comportamento de marcar (que marca anteriores também).
+      const newSets = sets.map((s, j) => {
+        if (j < si) return s;
+        if (!s.completed) return s;
+        return { ...s, completed: false };
+      });
+      setActive(prev => ({
+        ...prev,
+        exercises: prev.exercises.map((e, i) => i === idx ? { ...e, sets: newSets } : e)
+      }));
     } else {
       if (!isValidForCompletion(set)) return;
       // Marca esta série E todas as anteriores que ainda não foram marcadas e que tenham dados válidos.
@@ -1807,10 +1841,13 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
 
   // Progresso geral: total de séries concluídas / total de séries existentes (todos exercícios).
   // Reage automaticamente a add/remove de séries e exercícios via active.exercises.
+  // Progresso geral conta apenas séries de TRABALHO (não-aquecimento).
+  // Aquecimentos não entram no contador X/Y nem na barra de progresso —
+  // o objetivo é a conclusão das séries de trabalho do treino.
   const progress = useMemo(() => {
     let total = 0, done = 0;
     active.exercises.forEach(e => {
-      const sets = e.sets || [];
+      const sets = (e.sets || []).filter(s => !s.warmup);
       total += sets.length;
       done += sets.filter(s=>s.completed).length;
     });
@@ -2085,12 +2122,25 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
               </tr>
             </thead>
             <tbody>
-              {sets.map((s, si) => (
-                <SetRow key={si} si={si} set={s} exDef={exDef}
-                  onUpdate={(patch)=>onUpdateSet(si, patch)}
-                  onToggle={()=>onToggleSet(si)}
-                  onRemove={()=>onRemoveSet(si)} />
-              ))}
+              {(() => {
+                // Numeração: aquecimentos não consomem número; séries válidas começam em 1.
+                let validCount = 0;
+                return sets.map((s, si) => {
+                  let displayNum;
+                  if (s.warmup) {
+                    displayNum = null; // mostra "AQ"
+                  } else {
+                    validCount += 1;
+                    displayNum = validCount;
+                  }
+                  return (
+                    <SetRow key={si} si={si} displayNum={displayNum} set={s} exDef={exDef}
+                      onUpdate={(patch)=>onUpdateSet(si, patch)}
+                      onToggle={()=>onToggleSet(si)}
+                      onRemove={()=>onRemoveSet(si)} />
+                  );
+                });
+              })()}
             </tbody>
           </table>
 
@@ -2156,7 +2206,7 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
   );
 };
 
-const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
+const SetRow = ({ si, displayNum, set, exDef, onUpdate, onToggle, onRemove }) => {
   const completed = !!set.completed;
   const isWarmup = !!set.warmup;
   const oneRM = exDef.type === 'weight' && set.weight !== '' && set.reps !== '' ? calc1RM(set.weight, set.reps) : 0;
@@ -2199,7 +2249,7 @@ const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
             title={isWarmup ? 'Aquecimento — clique para desmarcar' : 'Marcar como aquecimento'}
             className={`w-full font-mono transition-colors ${completed ? 'cursor-not-allowed' : 'cursor-pointer hover:text-white'}`}
             style={isWarmup ? { color: WARMUP_COLOR, fontSize: 10, fontWeight: 600 } : { color: '#666', fontSize: 11 }}>
-            {isWarmup ? 'AQ' : (si+1)}
+            {isWarmup ? 'AQ' : displayNum}
           </button>
         </td>
         <td><NumStepper value={set.rest} onChange={v=>onUpdate({rest:v})} step={15} disabled={completed} /></td>
@@ -2220,7 +2270,7 @@ const SetRow = ({ si, set, exDef, onUpdate, onToggle, onRemove }) => {
         </td>
       </tr>
       {confirmDel && (
-        <Confirm open={true} title={`Excluir série ${si+1}?`}
+        <Confirm open={true} title={`Excluir ${isWarmup ? 'aquecimento' : `série ${displayNum}`}?`}
           message="Esta série será removida do exercício. Esta ação não pode ser desfeita."
           confirmLabel="Excluir"
           onConfirm={()=>{ setConfirmDel(false); onRemove(); }}
@@ -2271,21 +2321,27 @@ const ExerciseHistoryModal = ({ exerciseId, data, onClose }) => {
                 </div>
                 <div className="text-[10px] font-mono text-[#666] tracking-widest mb-2">{formatDateTime(session.date)}</div>
                 <div className="space-y-0.5">
-                  {sets.map((s, si) => (
-                    <div key={si} className="flex items-center gap-3 text-xs font-mono">
-                      {s.warmup
-                        ? <span className="font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
-                        : <span className="text-[#666] w-5">{si+1}</span>}
-                      {exDef && exDef.type==='time' ? (
-                        <span className="text-white">{Number(s.weight)>0?`${s.weight}kg · `:''}{s.time}s</span>
-                      ) : (
-                        <>
-                          <span className="text-white">{formatLoadReps(s.weight, s.reps)}</span>
-                          {s.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {s.oneRM}kg</span>}
-                        </>
-                      )}
-                    </div>
-                  ))}
+                  {(() => {
+                    let validIdx = 0;
+                    return sets.map((s, si) => {
+                      const num = s.warmup ? null : (++validIdx);
+                      return (
+                        <div key={si} className="flex items-center gap-3 text-xs font-mono">
+                          {s.warmup
+                            ? <span className="font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
+                            : <span className="text-[#666] w-5">{num}</span>}
+                          {exDef && exDef.type==='time' ? (
+                            <span className="text-white">{Number(s.weight)>0?`${s.weight}kg · `:''}{s.time}s</span>
+                          ) : (
+                            <>
+                              <span className="text-white">{formatLoadReps(s.weight, s.reps)}</span>
+                              {s.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {s.oneRM}kg</span>}
+                            </>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
                 {sessionNote && (
                   <div className="text-[10px] font-mono text-[#888] mt-2 leading-relaxed border-l-2 border-[#1a1a1a] pl-2">{sessionNote}</div>
@@ -2357,8 +2413,12 @@ const SummaryModal = ({ active, data, onConfirm, onCancel, onUpdateActive }) => 
     return m;
   });
 
-  const totalSets = active.exercises.reduce((acc, e) => acc + ((e.sets&&e.sets.filter(s=>s.completed).length)||0), 0);
-  const totalVolume = active.exercises.reduce((acc, e) => acc + (e.sets||[]).filter(s=>s.completed).reduce((a,s)=>a+(Number(s.weight)||0)*(Number(s.reps)||0),0), 0);
+  // Totais finais de séries e volume IGNORAM aquecimentos (consistente com o resto do app).
+  const totalSets = active.exercises.reduce((acc, e) =>
+    acc + ((e.sets && e.sets.filter(s => s.completed && !s.warmup).length) || 0), 0);
+  const totalVolume = active.exercises.reduce((acc, e) =>
+    acc + (e.sets||[]).filter(s => s.completed && !s.warmup)
+                       .reduce((a,s)=>a+(Number(s.weight)||0)*(Number(s.reps)||0),0), 0);
 
   const handleConfirm = () => {
     const extras = { disposition, intensity, applyStructural };
@@ -2528,8 +2588,8 @@ const HistoryView = ({ data, onSelect }) => {
           <div key={month}>
             <div className="px-4 py-2 text-[10px] font-mono uppercase tracking-widest text-[#666] bg-[#070707] border-b border-[#1a1a1a]">{label}</div>
             {sessions.map(s => {
-              const totalSets = s.exercises.reduce((a,e)=>a+((e.sets&&e.sets.filter(x=>x.completed).length)||0),0);
-              const volume = s.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed).reduce((b,x)=>b+(Number(x.weight)||0)*(Number(x.reps)||0),0),0);
+              const totalSets = s.exercises.reduce((a,e)=>a+((e.sets&&e.sets.filter(x=>x.completed && !x.warmup).length)||0),0);
+              const volume = s.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed && !x.warmup).reduce((b,x)=>b+(Number(x.weight)||0)*(Number(x.reps)||0),0),0);
               const tpl = s.templateId ? data.workouts.find(w=>w.id===s.templateId) : null;
               const tplColor = (tpl && tpl.color) || '#666';
               return (
@@ -2650,10 +2710,11 @@ const sessionToText = (session, data) => {
       lines.push(`   ★ NOVO MELHOR 1RM: ${sessionMax1RM}kg (anterior: ${priorMax1RM || 'sem registro'}kg)`);
     }
 
+    let validIdx = 0;
     sets.forEach((s, si) => {
       const restPart = (s.rest && Number(s.rest) > 0) ? ` (descanso ${s.rest}s)` : '';
-      // Identifica como aquecimento ou série numerada (numeração só conta séries não-aquecimento)
-      const labelPrefix = s.warmup ? 'Aquecimento' : `Série ${si+1}`;
+      // Numeração de séries não-aquecimento começa em 1 e ignora aquecimentos no meio.
+      const labelPrefix = s.warmup ? 'Aquecimento' : `Série ${++validIdx}`;
       let line;
       if (isTime) {
         const wPart = Number(s.weight) > 0 ? `${s.weight}kg · ` : '';
@@ -2727,8 +2788,8 @@ const sessionToTSV = (session, data) => {
 
 const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
   const [confirmDel, setConfirmDel] = useState(false);
-  const totalSets = session.exercises.reduce((a,e)=>a+((e.sets&&e.sets.filter(x=>x.completed).length)||0),0);
-  const volume = session.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed).reduce((b,x)=>b+(Number(x.weight)||0)*(Number(x.reps)||0),0),0);
+  const totalSets = session.exercises.reduce((a,e)=>a+((e.sets&&e.sets.filter(x=>x.completed && !x.warmup).length)||0),0);
+  const volume = session.exercises.reduce((a,e)=>a+(e.sets||[]).filter(x=>x.completed && !x.warmup).reduce((b,x)=>b+(Number(x.weight)||0)*(Number(x.reps)||0),0),0);
 
   const copyToClipboard = async (text, msg) => {
     try {
@@ -2849,10 +2910,10 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
                   )}
                 </div>
               </div>
-              {/* Grupo muscular abaixo do nome */}
+              {/* Grupo muscular abaixo do nome (contagem ignora aquecimentos) */}
               {def && def.muscle && (
                 <div className="text-[10px] font-mono uppercase tracking-widest mb-2" style={{ color: c }}>
-                  {def.muscle} · {sets.length} séries
+                  {def.muscle} · {sets.filter(s=>!s.warmup).length} séries
                   {isBest1RM && (
                     <span className="ml-2 px-1.5 py-0.5" style={{ background: '#d4ff00', color: '#000' }}>★ MELHOR 1RM {sessionMax1RM}kg</span>
                   )}
@@ -2860,43 +2921,47 @@ const SessionDetail = ({ session, data, onBack, onDelete, toast }) => {
               )}
               {sets.length > 0 && (
                 <div className="space-y-1 mb-2">
-                  {sets.map((s,si) => {
-                    const prevS = prevSets[si];
-                    let diffStr = null;
-                    if (prevS) {
-                      if (isTime) {
-                        const dt = (Number(s.time)||0) - (Number(prevS.time)||0);
-                        if (dt !== 0) diffStr = `${dt > 0 ? '+' : ''}${dt}s`;
-                      } else {
-                        const dw = (Number(s.weight)||0) - (Number(prevS.weight)||0);
-                        const dr = (Number(s.reps)||0) - (Number(prevS.reps)||0);
-                        const parts = [];
-                        if (dw !== 0) parts.push(`${dw>0?'+':''}${dw}kg`);
-                        if (dr !== 0) parts.push(`${dr>0?'+':''}${dr}r`);
-                        if (parts.length) diffStr = parts.join(' ');
+                  {(() => {
+                    let validIdx = 0;
+                    return sets.map((s,si) => {
+                      const displayNum = s.warmup ? null : (++validIdx);
+                      const prevS = prevSets[si];
+                      let diffStr = null;
+                      if (prevS) {
+                        if (isTime) {
+                          const dt = (Number(s.time)||0) - (Number(prevS.time)||0);
+                          if (dt !== 0) diffStr = `${dt > 0 ? '+' : ''}${dt}s`;
+                        } else {
+                          const dw = (Number(s.weight)||0) - (Number(prevS.weight)||0);
+                          const dr = (Number(s.reps)||0) - (Number(prevS.reps)||0);
+                          const parts = [];
+                          if (dw !== 0) parts.push(`${dw>0?'+':''}${dw}kg`);
+                          if (dr !== 0) parts.push(`${dr>0?'+':''}${dr}r`);
+                          if (parts.length) diffStr = parts.join(' ');
+                        }
                       }
-                    }
-                    const diffColor = diffStr && diffStr.startsWith('+') ? '#84cc16' : '#ff4757';
-                    return (
-                      <div key={si} className="flex items-center gap-2 text-xs font-mono">
-                        {s.warmup ? (
-                          <span className="flex-shrink-0 font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
-                        ) : (
-                          <span className="text-[#666] w-5 flex-shrink-0">{si+1}</span>
-                        )}
-                        {Number(s.rest) > 0 && (
-                          <span className="text-[#888] flex-shrink-0 text-[10px]" title="Descanso antes desta série">⏱{s.rest}s</span>
-                        )}
-                        {isTime ? (
-                          <span className="text-white flex-1 min-w-0 truncate">{Number(s.weight)>0?`${s.weight}kg · `:''}{s.time}s</span>
-                        ) : (
-                          <span className="text-white flex-1 min-w-0 truncate">{formatLoadReps(s.weight, s.reps)}</span>
-                        )}
-                        {diffStr && <span style={{ color: diffColor }} className="flex-shrink-0 text-[10px]">{diffStr}</span>}
-                        {!isTime && s.oneRM > 0 && <span className="text-[#888] flex-shrink-0">1RM {s.oneRM}kg</span>}
-                      </div>
-                    );
-                  })}
+                      const diffColor = diffStr && diffStr.startsWith('+') ? '#84cc16' : '#ff4757';
+                      return (
+                        <div key={si} className="flex items-center gap-2 text-xs font-mono">
+                          {s.warmup ? (
+                            <span className="flex-shrink-0 font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
+                          ) : (
+                            <span className="text-[#666] w-5 flex-shrink-0">{displayNum}</span>
+                          )}
+                          {Number(s.rest) > 0 && (
+                            <span className="text-[#888] flex-shrink-0 text-[10px]" title="Descanso antes desta série">⏱{s.rest}s</span>
+                          )}
+                          {isTime ? (
+                            <span className="text-white flex-1 min-w-0 truncate">{Number(s.weight)>0?`${s.weight}kg · `:''}{s.time}s</span>
+                          ) : (
+                            <span className="text-white flex-1 min-w-0 truncate">{formatLoadReps(s.weight, s.reps)}</span>
+                          )}
+                          {diffStr && <span style={{ color: diffColor }} className="flex-shrink-0 text-[10px]">{diffStr}</span>}
+                          {!isTime && s.oneRM > 0 && <span className="text-[#888] flex-shrink-0">1RM {s.oneRM}kg</span>}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               )}
               {e.sessionNote && (
@@ -2939,7 +3004,7 @@ const ProgressView = ({ data }) => {
           execScore: e.execScore || null,
           max1RM, maxW, maxReps, maxTime, volume,
           // sets aqui inclui aquecimento também pra mostrar no histórico detalhado
-          sets: allCompleted, setsCount: allCompleted.length
+          sets: allCompleted, setsCount: sets.length
         });
       });
     });
@@ -3033,15 +3098,21 @@ const ProgressView = ({ data }) => {
                   {s.execScore && <span className="text-[#d4ff00]">Exec {s.execScore}/5</span>}
                 </div>
                 <div className="space-y-0.5">
-                  {s.sets.map((set, si) => (
-                    <div key={si} className="flex items-center gap-3 text-xs font-mono">
-                      {set.warmup
-                        ? <span className="font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
-                        : <span className="text-[#666] w-5">{si+1}</span>}
-                      {isTime ? <span className="text-white">{Number(set.weight)>0?`${set.weight}kg · `:''}{set.time}s</span>
-                        : (<><span className="text-white">{formatLoadReps(set.weight, set.reps)}</span>{set.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {set.oneRM}kg</span>}</>)}
-                    </div>
-                  ))}
+                  {(() => {
+                    let vi = 0;
+                    return s.sets.map((set, si) => {
+                      const num = set.warmup ? null : (++vi);
+                      return (
+                        <div key={si} className="flex items-center gap-3 text-xs font-mono">
+                          {set.warmup
+                            ? <span className="font-mono" style={{ color: '#f59e0b', fontSize: 9, fontWeight: 600, width: 22 }}>AQ</span>
+                            : <span className="text-[#666] w-5">{num}</span>}
+                          {isTime ? <span className="text-white">{Number(set.weight)>0?`${set.weight}kg · `:''}{set.time}s</span>
+                            : (<><span className="text-white">{formatLoadReps(set.weight, set.reps)}</span>{set.oneRM > 0 && <span className="text-[#888] ml-auto">1RM {set.oneRM}kg</span>}</>)}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             ))}
@@ -3270,22 +3341,23 @@ const ConfigView = ({ data, setData, toast }) => {
     bumpSync('fileImport');
     toast('Dados substituídos.');
   };
-  // Merge: adiciona itens novos (id não existente) sem mexer nos existentes.
-  // Para sessões, usa o id (gerado uid). Para exercícios e workouts, idem.
-  const mergeData = (incoming) => {
+  // Merge genérico: adiciona itens novos (id não existente) sem mexer nos existentes.
+  const performMerge = (incoming) => {
     setData(curr => {
       const existsBy = (arr, id) => arr.some(x => x.id === id);
       const newExs = (incoming.exercises||[]).filter(e => !existsBy(curr.exercises, e.id));
       const newWks = (incoming.workouts||[]).filter(w => !existsBy(curr.workouts, w.id));
       const newSes = (incoming.sessions||[]).filter(s => !existsBy(curr.sessions, s.id));
-      const merged = {
+      return {
         ...curr,
         exercises: [...curr.exercises, ...newExs].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR')),
         workouts:  [...curr.workouts,  ...newWks],
         sessions:  [...curr.sessions,  ...newSes].sort((a,b)=>b.date - a.date),
       };
-      return merged;
     });
+  };
+  const mergeData = (incoming) => {
+    performMerge(incoming);
     setConfirmReplace(false); setImportPreview(null);
     bumpSync('fileImport');
     toast('Dados adicionados.');
@@ -3294,7 +3366,13 @@ const ConfigView = ({ data, setData, toast }) => {
     if (drivePreview) setData(drivePreview.payload);
     setConfirmReplaceFromDrive(false); setDrivePreview(null);
     bumpSync('driveLoad');
-    toast('Dados importados do Drive.');
+    toast('Dados substituídos pelo Drive.');
+  };
+  const mergeFromDrive = () => {
+    if (drivePreview) performMerge(drivePreview.payload);
+    setConfirmReplaceFromDrive(false); setDrivePreview(null);
+    bumpSync('driveLoad');
+    toast('Dados do Drive adicionados.');
   };
   const wipeAll = () => {
     setData({ exercises: [], workouts: [], sessions: [] });
@@ -3444,9 +3522,31 @@ const ConfigView = ({ data, setData, toast }) => {
         )}
       </Modal>
 
-      <Confirm open={confirmReplaceFromDrive} title="Substituir com dados do Drive?"
-        message={drivePreview ? `Backup do Drive (modificado em ${new Date(drivePreview.modifiedTime).toLocaleString('pt-BR')}) contém ${drivePreview.payload.exercises.length} exercícios, ${drivePreview.payload.workouts.length} treinos e ${drivePreview.payload.sessions.length} sessões. Os dados locais serão substituídos.` : ''}
-        onConfirm={doImportFromDrive} onCancel={()=>{setConfirmReplaceFromDrive(false); setDrivePreview(null);}} danger />
+      <Modal open={confirmReplaceFromDrive} onClose={()=>{setConfirmReplaceFromDrive(false); setDrivePreview(null);}} title="Carregar do Drive"
+        footer={null}>
+        {drivePreview && (
+          <>
+            <p className="text-sm text-[#aaa] font-mono leading-relaxed">
+              Backup do Drive (modificado em <span className="text-white">{new Date(drivePreview.modifiedTime).toLocaleString('pt-BR')}</span>) contém <span className="text-white">{drivePreview.payload.exercises.length}</span> exercícios, <span className="text-white">{drivePreview.payload.workouts.length}</span> treinos e <span className="text-white">{drivePreview.payload.sessions.length}</span> sessões.
+            </p>
+            <div className="border border-[#1a1a1a] p-3 space-y-2">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-[#d4ff00]">Adicionar</div>
+              <p className="text-[11px] font-mono text-[#aaa] leading-relaxed">
+                Adiciona apenas itens novos (que ainda não existem por id). Mantém todos os seus dados atuais.
+              </p>
+              <Btn variant="primary" onClick={mergeFromDrive} icon={Plus} full>Adicionar dados novos</Btn>
+            </div>
+            <div className="border border-[#ff4757]/30 p-3 space-y-2">
+              <div className="text-[10px] font-mono uppercase tracking-widest text-[#ff4757]">Substituir</div>
+              <p className="text-[11px] font-mono text-[#aaa] leading-relaxed">
+                Apaga TODOS os dados locais e usa apenas os do Drive. Esta ação não pode ser desfeita.
+              </p>
+              <Btn variant="danger" onClick={doImportFromDrive} icon={CloudDown} full>Substituir todos os dados</Btn>
+            </div>
+            <Btn variant="ghost" onClick={()=>{setConfirmReplaceFromDrive(false); setDrivePreview(null);}} full>Cancelar</Btn>
+          </>
+        )}
+      </Modal>
       <Confirm open={confirmWipe} title="Apagar tudo?"
         message="Você vai perder TODOS os dados locais. Esta ação não pode ser desfeita."
         onConfirm={wipeAll} onCancel={()=>setConfirmWipe(false)} danger />
