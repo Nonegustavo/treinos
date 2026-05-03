@@ -428,7 +428,7 @@ const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
 const TIMER_PREFS_KEY = 'gymapp-timer-prefs-v1';
 const TIMER_STATE_KEY = 'gymapp-timer-state-v1';
-const APP_VERSION = '2026-04-30-v19';
+const APP_VERSION = '2026-04-30-v20';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -738,11 +738,21 @@ const withAlpha = (hex, alpha) => {
 
 const normalizeTemplateExercise = (we, exDef) => {
   const targetSets = Math.max(1, we.targetSets || 3);
+  // Migração: se há restSeconds (campo antigo do exercício) e algum setRef não tem
+  // rest definido, propaga o restSeconds pro rest dele. Mantém compat com dados antigos.
+  const fillRest = (ref) => {
+    if (ref.rest != null && ref.rest !== '') return ref;
+    if (we.restSeconds && we.restSeconds > 0) return { ...ref, rest: we.restSeconds };
+    return ref;
+  };
   if (Array.isArray(we.setRefs) && we.setRefs.length) {
-    if (we.setRefs.length === targetSets) return we;
+    if (we.setRefs.length === targetSets) {
+      return { ...we, setRefs: we.setRefs.map(fillRest) };
+    }
     const adjusted = [];
     for (let i = 0; i < targetSets; i++) {
-      adjusted.push(we.setRefs[i] || we.setRefs[we.setRefs.length-1] || { weight: '', reps: '', time: '' });
+      const base = we.setRefs[i] || we.setRefs[we.setRefs.length-1] || { weight: '', reps: '', time: '' };
+      adjusted.push(fillRest(base));
     }
     return { ...we, setRefs: adjusted };
   }
@@ -752,8 +762,10 @@ const normalizeTemplateExercise = (we, exDef) => {
   const isTime = exDef && exDef.type === 'time';
   const setRefs = [];
   for (let i = 0; i < targetSets; i++) {
-    if (isTime) setRefs.push({ weight: baseW, reps: '', time: baseTime });
-    else setRefs.push({ weight: baseW, reps: baseReps, time: '' });
+    const base = isTime
+      ? { weight: baseW, reps: '', time: baseTime }
+      : { weight: baseW, reps: baseReps, time: '' };
+    setRefs.push(fillRest(base));
   }
   return { ...we, setRefs };
 };
@@ -1554,9 +1566,18 @@ const WorkoutEditor = ({ workout, data, setData, onClose }) => {
                           ? ((we.setRefs||[]).map(s => s.time||'?').join('/') + 's')
                           : `${we.targetRepsMin || '?'}-${we.targetRepsMax || '?'} reps`}
                       </span>
-                      {we.restSeconds > 0 && (
-                        <span className="text-[#666]">⏱ {we.restSeconds}s</span>
-                      )}
+                      {/* Tempo de descanso: mostra valor único se todas setRefs têm mesmo rest,
+                          senão mostra faixa "min-max s". Ignora vazios. */}
+                      {(() => {
+                        const rests = (we.setRefs || [])
+                          .map(r => r.rest)
+                          .filter(v => v !== '' && v != null && Number(v) > 0)
+                          .map(Number);
+                        if (rests.length === 0) return null;
+                        const min = Math.min(...rests), max = Math.max(...rests);
+                        const label = min === max ? `${min}s` : `${min}-${max}s`;
+                        return <span className="text-[#666]">⏱ {label}</span>;
+                      })()}
                     </div>
                   </div>
                   <button onClick={()=>{ vibrate(15); setEditingExIdx(idx); }} className="text-[#888] hover:text-white p-2"><Edit3 size={14} /></button>
@@ -1681,22 +1702,18 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
         </div>
       )}
 
-      {/* Tempo sugerido de intervalo entre séries (em segundos). */}
-      <Input label="Intervalo entre séries (s)" type="number" inputMode="numeric" value={it.restSeconds == null ? '' : it.restSeconds}
-        onChange={v=>setIt({...it, restSeconds: v==='' ? '' : Math.max(0, parseInt(v)||0)})}
-        placeholder="Ex: 90" suffix="seg" />
-
       <div>
         <div className="text-[10px] font-mono uppercase tracking-widest text-[#666] mb-2">
           Séries de referência ({(it.setRefs||[]).length})
         </div>
         <p className="text-[10px] font-mono text-[#666] mb-3 leading-relaxed">
-          Estes valores são pré-preenchidos no início do treino. Ao editar uma série, o valor é copiado apenas para as séries seguintes que ainda estiverem vazias. Toque no número da série para marcá-la como aquecimento.
+          Estes valores são pré-preenchidos no início do treino. Ao editar uma célula, o valor é copiado apenas para as séries seguintes que ainda estiverem vazias. Toque no número da série para marcá-la como aquecimento. O descanso é em segundos e usado pelo timer durante o treino.
         </p>
         <table className="set-table">
           <thead>
             <tr>
               <th className="col-num">#</th>
+              <th>Desc</th>
               {isTime ? (<><th>Carga</th><th>Tempo</th></>) : (<><th>Carga</th><th>Reps</th></>)}
             </tr>
           </thead>
@@ -1723,6 +1740,7 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
                         {isAQ ? 'AQ' : num}
                       </button>
                     </td>
+                    <td><NumStepper value={r.rest} onChange={v=>updateRef(i, 'rest', v)} step={15} /></td>
                     {isTime ? (
                       <>
                         <td><NumStepper value={r.weight} onChange={v=>updateRef(i, 'weight', v)} step={0.5} /></td>
@@ -1759,30 +1777,21 @@ const WorkoutExerciseEditor = ({ item, exercise, onSave, onCancel, onRemove }) =
   );
 };
 
-const buildInitialSets = (exDef, exTemplateItem, getLastRestForSet) => {
+const buildInitialSets = (exDef, exTemplateItem) => {
   const it = normalizeTemplateExercise(exTemplateItem, exDef);
   const refs = it.setRefs || [];
-  // Pré-preenche o tempo de descanso na seguinte ordem de prioridade (TODAS as séries,
-  // incluindo a primeira — o descanso da primeira pode representar o intervalo desde o
-  // exercício anterior do treino):
-  //   1. Descanso REAL da mesma série na última sessão (via getLastRestForSet)
-  //   2. restSeconds definido no template do exercício
-  //   3. vazio se nada disponível
-  const defaultRest = it.restSeconds && it.restSeconds > 0 ? it.restSeconds : '';
-  return refs.map((r, i) => {
-    let rest = '';
-    const fromHistory = getLastRestForSet ? getLastRestForSet(i) : null;
-    if (fromHistory != null && fromHistory !== '') rest = fromHistory;
-    else rest = defaultRest;
-    return {
-      completed: false,
-      warmup: !!r.warmup,
-      rest,
-      weight: r.weight == null ? '' : r.weight,
-      reps: r.reps == null ? '' : r.reps,
-      time: r.time == null ? '' : r.time,
-    };
-  });
+  // Pré-preenche o tempo de descanso direto da setRef (referência do template).
+  // O descanso registrado em sessões anteriores NÃO afeta o pré-preenchimento — o
+  // descanso na sessão é registro histórico, não parâmetro do treino. O parâmetro
+  // do treino é o que está nas setRefs e deve ser consistente entre sessões.
+  return refs.map((r) => ({
+    completed: false,
+    warmup: !!r.warmup,
+    rest: r.rest == null || r.rest === '' ? '' : r.rest,
+    weight: r.weight == null ? '' : r.weight,
+    reps: r.reps == null ? '' : r.reps,
+    time: r.time == null ? '' : r.time,
+  }));
 };
 
 /* ACTIVE WORKOUT */
@@ -1993,29 +2002,52 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
       vibrate(80);
 
       // === TIMER DE DESCANSO ===
-      // Inicia automaticamente se: timer habilitado E o exercício tem restSeconds definido.
-      // Tempo alvo vem do RESTSECONDS DO EXERCÍCIO, não do campo rest da série
-      // (decisão consciente: o timer é uma sugestão fixa do plano).
-      if (timerPrefs.enabled && exLog.restSeconds && exLog.restSeconds > 0) {
-        setTimer({
-          startedAt: Date.now(),
-          targetSeconds: exLog.restSeconds,
-          exerciseId: exLog.exerciseId,
-          exerciseIdx: idx,
-          lastSetIdx: si,
-          notified: false,
-        });
-        // Pede permissão de notificação na primeira vez que o timer inicia
-        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-          try { Notification.requestPermission(); } catch(e){}
+      // Inicia automaticamente se: timer habilitado E há próxima série pendente
+      // com descanso definido.
+      // O tempo alvo vem do REST DA PRÓXIMA SÉRIE PENDENTE, não de um campo
+      // único do exercício. Se a próxima série é do mesmo exercício, usa o rest
+      // dela. Se for do próximo exercício, usa o rest da primeira série dele.
+      if (timerPrefs.enabled) {
+        // Procura próxima série pendente a partir de (idx, si+1).
+        // Como o setActive ainda não foi aplicado nesta execução, raciocínio aqui usa
+        // active.exercises atual (mesma referência que mais nada vai modificar antes).
+        let nextRest = null;
+        outer: for (let ei = idx; ei < active.exercises.length; ei++) {
+          const ex = active.exercises[ei];
+          const fromSi = ei === idx ? si + 1 : 0;
+          for (let sj = fromSi; sj < (ex.sets || []).length; sj++) {
+            // Considera "pendente" qualquer série não-completed.
+            // (As séries que acabamos de marcar via "marcar até esta" ainda aparecem
+            //  como completed no newSets local, então buscamos no estado atual).
+            const setRow = ex.sets[sj];
+            if (!setRow.completed && setRow.rest !== '' && setRow.rest != null && Number(setRow.rest) > 0) {
+              nextRest = Number(setRow.rest);
+              break outer;
+            }
+            if (!setRow.completed) {
+              // Próxima série pendente sem descanso definido: timer não inicia.
+              break outer;
+            }
+          }
         }
-        // Agenda a notificação no Service Worker pra disparar quando o tempo acabar.
-        // Importante: setTimeout da página pode pausar com app em background;
-        // o SW tem chance maior de manter o agendamento ativo.
-        scheduleNotification(exLog.restSeconds * 1000, 'Descanso completo', {
-          body: 'Toque para iniciar a próxima série',
-          tag: 'rest-timer',
-        });
+        if (nextRest != null && nextRest > 0) {
+          setTimer({
+            startedAt: Date.now(),
+            targetSeconds: nextRest,
+            exerciseId: exLog.exerciseId,
+            exerciseIdx: idx,
+            lastSetIdx: si,
+            notified: false,
+          });
+          // Pede permissão de notificação na primeira vez que o timer inicia
+          if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            try { Notification.requestPermission(); } catch(e){}
+          }
+          scheduleNotification(nextRest * 1000, 'Descanso completo', {
+            body: 'Toque para iniciar a próxima série',
+            tag: 'rest-timer',
+          });
+        }
       }
     }
   };
@@ -2496,20 +2528,12 @@ const ExerciseBlock = ({ idx, total, exLog, exDef, isCollapsed, onToggleCollapse
 
       {!isCollapsed && (
         <>
-          {/* Observações fixas: agora sempre visíveis em texto completo, sem modal */}
+          {/* Observações fixas: agora sempre visíveis em texto completo, sem modal.
+              Descanso não aparece mais aqui — é mostrado por série na coluna Desc. */}
           {(exDef.notes || exLog.notes) && (
             <div className="w-full px-4 py-2 bg-[#050505] border-b border-[#0d0d0d]">
               <div className="text-[9px] font-mono uppercase tracking-widest text-[#666] mb-0.5">Observações</div>
               <p className="text-[11px] font-mono text-[#888] leading-relaxed whitespace-pre-wrap">{exDef.notes || exLog.notes}</p>
-              {exLog.restSeconds > 0 && (
-                <div className="text-[10px] font-mono text-[#888] mt-1">Descanso sugerido: <span className="text-[#d4ff00]">{exLog.restSeconds}s</span></div>
-              )}
-            </div>
-          )}
-          {/* Mostra descanso sugerido mesmo sem observações */}
-          {(!exDef.notes && !exLog.notes && exLog.restSeconds > 0) && (
-            <div className="w-full px-4 py-2 bg-[#050505] border-b border-[#0d0d0d]">
-              <div className="text-[10px] font-mono text-[#888]">Descanso sugerido: <span className="text-[#d4ff00]">{exLog.restSeconds}s</span></div>
             </div>
           )}
 
@@ -3097,20 +3121,22 @@ const activeTemplatesToText = (data) => {
       lines.push(`  ${ei+1}. ${name} (${muscle})`);
       const refs = we.setRefs || [];
       const numSets = refs.length || we.targetSets || 0;
+      const numWorkSets = refs.filter(r => !r.warmup).length;
       if (!isTime && we.targetRepsMin && we.targetRepsMax) {
         lines.push(`     Faixa alvo: ${we.targetRepsMin}-${we.targetRepsMax} reps`);
       }
-      if (we.restSeconds && we.restSeconds > 0) {
-        lines.push(`     Descanso entre séries: ${we.restSeconds}s`);
-      }
-      lines.push(`     ${numSets} séries de referência:`);
-      refs.forEach((r, si) => {
+      lines.push(`     ${numSets} séries totais (${numWorkSets} de trabalho):`);
+      let validIdx = 0;
+      refs.forEach((r) => {
+        const isAQ = !!r.warmup;
+        const label = isAQ ? 'Aquec' : `Série ${++validIdx}`;
+        const restPart = (r.rest && Number(r.rest) > 0) ? `, descanso ${r.rest}s` : '';
         if (isTime) {
           const wPart = Number(r.weight) > 0 ? `${r.weight}kg · ` : '';
-          lines.push(`       ${si+1}: ${wPart}${r.time || '?'}s`);
+          lines.push(`       ${label}: ${wPart}${r.time || '?'}s${restPart}`);
         } else {
           const wVal = Number(r.weight) > 0 ? `${r.weight}kg` : 'peso corporal';
-          lines.push(`       ${si+1}: ${wVal} × ${r.reps || '?'} reps`);
+          lines.push(`       ${label}: ${wVal} × ${r.reps || '?'} reps${restPart}`);
         }
       });
       if (we.notes) lines.push(`     Notas: ${we.notes}`);
@@ -3874,7 +3900,7 @@ const ConfigView = ({ data, setData, toast }) => {
           <div>
             <div className="text-[10px] font-mono uppercase tracking-widest text-[#d4ff00] mb-1">Timer de descanso</div>
             <p className="text-[10px] font-mono text-[#666] leading-relaxed">
-              Inicia automaticamente ao marcar uma série, com base no "Intervalo entre séries" definido no exercício.
+              Inicia automaticamente ao marcar uma série, com base no descanso definido na próxima série de referência.
             </p>
           </div>
           {[
@@ -4339,23 +4365,6 @@ function App() {
       return 3;
     };
 
-    // Helper: busca os descansos REAIS por índice de série da última sessão registrada
-    // do mesmo exercício. Retorna função (setIdx) -> rest|null.
-    const findLastRestsForExercise = (exerciseId) => {
-      for (const s of data.sessions) {
-        const log = s.exercises.find(e => e.exerciseId === exerciseId);
-        if (!log) continue;
-        const sets = (log.sets || []).filter(x => x.completed);
-        if (sets.length === 0) continue;
-        return (setIdx) => {
-          const set = sets[setIdx];
-          if (!set) return null;
-          return (set.rest === '' || set.rest == null) ? null : set.rest;
-        };
-      }
-      return () => null;
-    };
-
     const session = {
       id: sessionId,
       templateId: template.id,
@@ -4371,8 +4380,7 @@ function App() {
       exercises: template.exercises.map(we => {
         const def = data.exercises.find(d=>d.id===we.exerciseId);
         const norm = normalizeTemplateExercise(we, def);
-        const getLastRest = findLastRestsForExercise(we.exerciseId);
-        const sets = def ? buildInitialSets(def, norm, getLastRest) : [];
+        const sets = def ? buildInitialSets(def, norm) : [];
         return {
           exerciseId: we.exerciseId,
           targetSets: norm.targetSets,
