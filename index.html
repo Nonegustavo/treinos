@@ -324,14 +324,48 @@ input[type=number] { -moz-appearance: textfield; }
 <!-- Google Identity Services para OAuth -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-// Service worker mínimo registrado via Blob.
-// Funciona em browsers modernos no GitHub Pages (HTTPS) e melhora a instalabilidade do PWA.
-// Não faz cache offline — apenas valida o app como PWA pra o navegador oferecer "Instalar".
+// Service worker registrado via Blob.
+// - Sem cache (não faz offline real, evita problemas de versionamento)
+// - Aceita mensagens via postMessage pra mostrar notificações via showNotification
+//   (necessário em PWAs Android Chrome, que frequentemente bloqueiam new Notification() direto)
+// - Mantém referência global window.__swReg pra que o app possa usar swReg.showNotification(...)
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  var swCode = "self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('activate', e => self.clients.claim()); self.addEventListener('fetch', e => {});";
+  var swCode = [
+    "self.addEventListener('install', e => self.skipWaiting());",
+    "self.addEventListener('activate', e => self.clients.claim());",
+    "self.addEventListener('fetch', e => {});",
+    // Quando o usuário toca na notificação, foca a janela do app
+    "self.addEventListener('notificationclick', e => {",
+    "  e.notification.close();",
+    "  e.waitUntil(",
+    "    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {",
+    "      for (const c of list) { if ('focus' in c) { c.postMessage({ type: 'notification-click', tag: e.notification.tag }); return c.focus(); } }",
+    "      if (self.clients.openWindow) return self.clients.openWindow('/');",
+    "    })",
+    "  );",
+    "});",
+    // Permite que a página peça uma notificação via postMessage (algumas plataformas exigem)
+    "self.addEventListener('message', e => {",
+    "  if (e.data && e.data.type === 'show-notification') {",
+    "    self.registration.showNotification(e.data.title || 'Treino', e.data.options || {});",
+    "  }",
+    "});"
+  ].join('\n');
   var swBlob = new Blob([swCode], { type: 'application/javascript' });
   var swUrl = URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swUrl).catch(function(err) { console.warn('SW registration failed:', err); });
+  navigator.serviceWorker.register(swUrl)
+    .then(function(reg) {
+      window.__swReg = reg;
+      // Escuta cliques na notificação propagados pelo SW
+      navigator.serviceWorker.addEventListener('message', function(e) {
+        if (e.data && e.data.type === 'notification-click') {
+          window.__pendingStartSetFromNotification = true;
+          // Dispara um evento focus pra que o app reaja imediatamente
+          try { window.dispatchEvent(new Event('focus')); } catch(err){}
+        }
+      });
+    })
+    .catch(function(err) { console.warn('SW registration failed:', err); });
 }
 </script>
 </head>
@@ -390,7 +424,7 @@ const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
 const TIMER_PREFS_KEY = 'gymapp-timer-prefs-v1';
 const TIMER_STATE_KEY = 'gymapp-timer-state-v1';
-const APP_VERSION = '2026-04-30-v15';
+const APP_VERSION = '2026-04-30-v16';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -552,6 +586,55 @@ const releaseWakeLock = () => {
     try { _wakeLock.release && _wakeLock.release(); } catch(e){}
     _wakeLock = null;
   }
+};
+
+/* Pede permissão de notificação. Retorna 'granted' / 'denied' / 'default'.
+   IMPORTANTE: deve ser chamado dentro de um handler de clique direto pra funcionar
+   em alguns Androids/PWAs que ignoram solicitações automáticas. */
+const requestNotificationPermission = async () => {
+  if (typeof Notification === 'undefined') return 'unsupported';
+  if (Notification.permission === 'granted') return 'granted';
+  if (Notification.permission === 'denied') return 'denied';
+  try {
+    const result = await Notification.requestPermission();
+    return result;
+  } catch(e) {
+    // Versões antigas usam callback
+    return new Promise(resolve => {
+      try { Notification.requestPermission(r => resolve(r)); }
+      catch(err) { resolve('default'); }
+    });
+  }
+};
+
+/* Mostra notificação local. Estratégia em camadas para máxima compatibilidade:
+   1. Se há service worker registration disponível, usa swReg.showNotification()
+      (necessário em PWAs Android Chrome instalados)
+   2. Fallback: new Notification() (funciona em desktop, Android Chrome aba normal)
+   Retorna a promise/notification ou null se falhar. */
+const showLocalNotification = async (title, options) => {
+  if (typeof Notification === 'undefined') return null;
+  if (Notification.permission !== 'granted') return null;
+  const opts = { tag: 'rest-timer', renotify: true, requireInteraction: false, silent: false, ...options };
+  // Tenta via service worker primeiro
+  try {
+    const reg = window.__swReg || (navigator.serviceWorker && await navigator.serviceWorker.getRegistration());
+    if (reg && reg.showNotification) {
+      await reg.showNotification(title, opts);
+      return true;
+    }
+  } catch(e) { console.warn('SW notification failed:', e); }
+  // Fallback: Notification API direta
+  try {
+    const n = new Notification(title, opts);
+    n.onclick = () => {
+      try { window.focus(); } catch(e){}
+      n.close();
+      window.__pendingStartSetFromNotification = true;
+    };
+    setTimeout(() => { try { n.close(); } catch(e){} }, 30000);
+    return n;
+  } catch(e) { console.warn('Notification failed:', e); return null; }
 };
 
 // Formatação de carga: 0 ou vazio = "peso corporal". Usado em históricos e relatórios.
@@ -1728,26 +1811,11 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
           if (timerPrefs.vibration) vibrate(400);
           // Beep
           if (timerPrefs.sound) playBeep();
-          // Notificação OS (tap volta foco pra app, que pode interpretar como "iniciar série")
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            try {
-              const n = new Notification('Descanso completo', {
-                body: 'Toque para iniciar a próxima série',
-                tag: 'rest-timer',
-                silent: false,
-                requireInteraction: false,
-              });
-              n.onclick = () => {
-                window.focus();
-                n.close();
-                // Quando o usuário toca na notificação, o handler abaixo (handleStartSet)
-                // é chamado via flag. Não dá pra chamar diretamente pq esse closure
-                // vai estar stale. Em vez disso, marcamos uma flag e detectamos no foco.
-                window.__pendingStartSetFromNotification = true;
-              };
-              setTimeout(() => { try { n.close(); } catch(e){} }, 30000);
-            } catch(e){}
-          }
+          // Notificação OS (tap volta foco pra app, que reage via flag pendente)
+          showLocalNotification('Descanso completo', {
+            body: 'Toque para iniciar a próxima série',
+            tag: 'rest-timer',
+          });
         }
       }
     };
@@ -1784,13 +1852,11 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
     const requestAndSchedule = () => {
       const fire = () => {
         if (cancelled) return;
-        try {
-          new Notification('Treino aberto há 2 horas', {
-            body: 'Você ainda está no treino "' + (active.templateName || '') + '". Lembre-se de finalizá-lo se já acabou.',
-            tag: 'treino-reminder-' + active.id,
-            requireInteraction: false,
-          });
-        } catch(e) { console.warn('Notification failed:', e); }
+        showLocalNotification('Treino aberto há 2 horas', {
+          body: 'Você ainda está no treino "' + (active.templateName || '') + '". Lembre-se de finalizá-lo se já acabou.',
+          tag: 'treino-reminder-' + active.id,
+          requireInteraction: false,
+        });
         // marca na sessão pra não disparar de novo
         setActive(prev => prev ? { ...prev, reminderSent: true } : prev);
       };
@@ -1798,14 +1864,7 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
         const id = setTimeout(fire, remaining);
         return () => { cancelled = true; clearTimeout(id); };
       }
-      if (Notification.permission === 'default') {
-        Notification.requestPermission().then(p => {
-          if (cancelled) return;
-          if (p === 'granted') {
-            setTimeout(fire, remaining);
-          }
-        });
-      }
+      // Não pedimos permissão automaticamente aqui — usuário pode habilitar em Config
       return () => { cancelled = true; };
     };
     const cleanup = requestAndSchedule();
@@ -3767,6 +3826,84 @@ const ConfigView = ({ data, setData, toast }) => {
               </div>
             </button>
           ))}
+        </div>
+
+        {/* NOTIFICAÇÕES OS */}
+        <div className="border border-[#1a1a1a] p-4 space-y-3">
+          <div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#d4ff00] mb-1">Notificações</div>
+            <p className="text-[10px] font-mono text-[#666] leading-relaxed">
+              Para receber notificação ao terminar o descanso, conceda permissão e teste antes do treino.
+              Em PWAs no Android, essa permissão é separada da permissão geral do Chrome.
+            </p>
+          </div>
+          {(() => {
+            const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
+            const isGranted = perm === 'granted';
+            const isDenied = perm === 'denied';
+            const isUnsupported = perm === 'unsupported';
+            return (
+              <>
+                <div className="flex items-center justify-between gap-3 px-3 py-2.5 border border-[#1a1a1a]">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-sm text-white">Status da permissão</div>
+                    <div className="text-[10px] font-mono text-[#666] mt-0.5">
+                      {isUnsupported && 'Navegador não suporta notificações'}
+                      {!isUnsupported && perm === 'default' && 'Ainda não foi solicitada'}
+                      {isGranted && 'Concedida'}
+                      {isDenied && 'Negada — abra as configurações do site para autorizar'}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 font-mono text-xs uppercase tracking-wider"
+                    style={{ color: isGranted ? '#d4ff00' : (isDenied ? '#ff4757' : '#888') }}>
+                    {perm.toUpperCase()}
+                  </div>
+                </div>
+                {!isUnsupported && !isGranted && !isDenied && (
+                  <Btn variant="primary" full onClick={async () => {
+                    const r = await requestNotificationPermission();
+                    if (r === 'granted') toast('Permissão concedida.');
+                    else if (r === 'denied') toast('Permissão negada. Habilite manualmente nas configurações do navegador.', 'error');
+                    else toast('Permissão não concedida.', 'error');
+                  }}>Pedir permissão</Btn>
+                )}
+                <Btn variant="ghost" full onClick={async () => {
+                  if (typeof Notification === 'undefined') { toast('Navegador não suporta notificações.', 'error'); return; }
+                  if (Notification.permission !== 'granted') {
+                    const r = await requestNotificationPermission();
+                    if (r !== 'granted') { toast('Permissão necessária.', 'error'); return; }
+                  }
+                  // Diagnóstico: tenta SW primeiro, registra qual caminho funcionou
+                  try {
+                    const reg = window.__swReg || (navigator.serviceWorker && await navigator.serviceWorker.getRegistration());
+                    if (reg && reg.showNotification) {
+                      await reg.showNotification('Teste de notificação', {
+                        body: 'Esta notificação veio do Service Worker (modo PWA).',
+                        tag: 'test-notification',
+                      });
+                      toast('Notificação enviada via Service Worker.');
+                      return;
+                    }
+                  } catch(e) { console.warn('SW path failed:', e); }
+                  // Fallback
+                  try {
+                    new Notification('Teste de notificação', {
+                      body: 'Esta notificação veio da Notification API direta.',
+                      tag: 'test-notification',
+                    });
+                    toast('Notificação enviada (modo direto).');
+                  } catch(e) {
+                    toast('Falha ao enviar notificação: ' + (e.message || 'erro'), 'error');
+                  }
+                }}>Testar notificação</Btn>
+                {isDenied && (
+                  <p className="text-[10px] font-mono text-[#ff4757] leading-relaxed px-1">
+                    Para reativar: nas configurações do Android → Apps → Chrome (ou o PWA do Treino) → Notificações → permitir. Depois volte aqui.
+                  </p>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* DRIVE SECTION */}
