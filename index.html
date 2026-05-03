@@ -428,7 +428,7 @@ const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
 const TIMER_PREFS_KEY = 'gymapp-timer-prefs-v1';
 const TIMER_STATE_KEY = 'gymapp-timer-state-v1';
-const APP_VERSION = '2026-04-30-v18';
+const APP_VERSION = '2026-04-30-v19';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -619,7 +619,17 @@ const requestNotificationPermission = async () => {
 const showLocalNotification = async (title, options) => {
   if (typeof Notification === 'undefined') return null;
   if (Notification.permission !== 'granted') return null;
-  const opts = { tag: 'rest-timer', renotify: true, requireInteraction: false, silent: false, ...options };
+  // Por padrão usa requireInteraction: true pra que a notificação fique fixa
+  // até o usuário interagir, dificultando o clique acidental no "Cancelar inscrição"
+  // que o Chrome adiciona em notificações de PWA.
+  const opts = {
+    tag: 'rest-timer',
+    renotify: true,
+    requireInteraction: true,
+    silent: false,
+    actions: [{ action: 'start', title: 'Iniciar série' }],
+    ...options,
+  };
   // Tenta via service worker primeiro
   try {
     const reg = window.__swReg || (navigator.serviceWorker && await navigator.serviceWorker.getRegistration());
@@ -628,7 +638,8 @@ const showLocalNotification = async (title, options) => {
       return true;
     }
   } catch(e) { console.warn('SW notification failed:', e); }
-  // Fallback: Notification API direta
+  // Fallback: Notification API direta (Chrome Android REJEITA isso em PWA;
+  // só funciona em desktop ou Android Chrome em aba normal sem SW)
   try {
     const n = new Notification(title, opts);
     n.onclick = () => {
@@ -639,6 +650,49 @@ const showLocalNotification = async (title, options) => {
     setTimeout(() => { try { n.close(); } catch(e){} }, 30000);
     return n;
   } catch(e) { console.warn('Notification failed:', e); return null; }
+};
+
+/* Agenda uma notificação pra disparar dentro de delayMs via Service Worker.
+   Fundamental pra notificações com app em background: o setInterval/setTimeout
+   da página pode pausar quando a aba sai de foco no Chrome Android, mas o SW
+   tem chance maior de manter o agendamento.
+   Se o SW não estiver disponível, faz fallback usando setTimeout da página. */
+const scheduleNotification = async (delayMs, title, options) => {
+  if (typeof Notification === 'undefined') return null;
+  if (Notification.permission !== 'granted') return null;
+  const opts = {
+    tag: 'rest-timer',
+    renotify: true,
+    requireInteraction: true,
+    silent: false,
+    actions: [{ action: 'start', title: 'Iniciar série' }],
+    ...options,
+  };
+  try {
+    const reg = window.__swReg || (navigator.serviceWorker && await navigator.serviceWorker.getRegistration());
+    if (reg && reg.active) {
+      reg.active.postMessage({
+        type: 'schedule-notification',
+        delayMs,
+        title,
+        options: opts,
+      });
+      return true;
+    }
+  } catch(e) { console.warn('Schedule via SW failed:', e); }
+  // Fallback: setTimeout da página (pode pausar com app em background)
+  setTimeout(() => { showLocalNotification(title, opts); }, Math.max(0, delayMs));
+  return false;
+};
+
+/* Cancela uma notificação previamente agendada via SW. */
+const cancelScheduledNotification = async (tag) => {
+  try {
+    const reg = window.__swReg || (navigator.serviceWorker && await navigator.serviceWorker.getRegistration());
+    if (reg && reg.active) {
+      reg.active.postMessage({ type: 'cancel-notification', tag: tag || 'rest-timer' });
+    }
+  } catch(e) {}
 };
 
 // Formatação de carga: 0 ou vazio = "peso corporal". Usado em históricos e relatórios.
@@ -1806,20 +1860,14 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
     const tick = () => {
       setTick(t => t + 1);
       // Cruzou o tempo alvo? Dispara feedback uma única vez.
+      // Beep+vibração só funcionam com app em foco. A notificação OS já foi
+      // agendada no SW no momento que o timer iniciou (não duplica aqui).
       if (timer.targetSeconds && !timer.notified) {
         const elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
         if (elapsed >= timer.targetSeconds) {
-          // Marca como notificado pra evitar repetição
           setTimer({ ...timer, notified: true });
-          // Vibração forte
           if (timerPrefs.vibration) vibrate(400);
-          // Beep
           if (timerPrefs.sound) playBeep();
-          // Notificação OS (tap volta foco pra app, que reage via flag pendente)
-          showLocalNotification('Descanso completo', {
-            body: 'Toque para iniciar a próxima série',
-            tag: 'rest-timer',
-          });
         }
       }
     };
@@ -1961,6 +2009,13 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
         if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
           try { Notification.requestPermission(); } catch(e){}
         }
+        // Agenda a notificação no Service Worker pra disparar quando o tempo acabar.
+        // Importante: setTimeout da página pode pausar com app em background;
+        // o SW tem chance maior de manter o agendamento ativo.
+        scheduleNotification(exLog.restSeconds * 1000, 'Descanso completo', {
+          body: 'Toque para iniciar a próxima série',
+          tag: 'rest-timer',
+        });
       }
     }
   };
@@ -2004,6 +2059,8 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
       return { ...prev, exercises: newExs };
     });
 
+    // Cancela qualquer notificação ainda agendada/visível
+    cancelScheduledNotification('rest-timer');
     setTimer(null);
   }, [timer, setActive, setTimer]);
 
@@ -2024,7 +2081,11 @@ const ActiveWorkout = ({ active, setActive, data, setData, onFinish, onPause }) 
 
   /* Função pra dispensar manualmente o timer sem registrar tempo (caso o usuário
      queira simplesmente cancelar). Usado no botão de fechar. */
-  const dismissTimer = () => { vibrate(15); setTimer(null); };
+  const dismissTimer = () => {
+    vibrate(15);
+    cancelScheduledNotification('rest-timer');
+    setTimer(null);
+  };
 
   const addSetRow = (idx) => {
     const exLog = active.exercises[idx];
@@ -3930,16 +3991,16 @@ const ConfigView = ({ data, setData, toast }) => {
                     }
                   }
 
-                  // 6. Tenta caminho direto também
+                  // 6. Tenta caminho direto também (esperado falhar em PWA Android)
                   try {
                     const n = new Notification('TESTE Direto - ' + new Date().toLocaleTimeString('pt-BR'), {
                       body: 'Notificação via API direta',
                       tag: 'test-direct',
                       requireInteraction: true,
                     });
-                    addDiag('new Notification(): chamada sem erro', true);
+                    addDiag('new Notification(): funcionou (modo desktop/aba)', true);
                   } catch(e) {
-                    addDiag('new Notification() FALHOU: ' + e.message, false);
+                    addDiag('new Notification(): bloqueado pelo navegador (esperado em PWA Android — caminho SW é o usado)', true);
                   }
 
                   // 7. Vibração e som como prova de vida (não-notificação)
