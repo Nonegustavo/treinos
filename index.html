@@ -424,7 +424,7 @@ const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
 const TIMER_PREFS_KEY = 'gymapp-timer-prefs-v1';
 const TIMER_STATE_KEY = 'gymapp-timer-state-v1';
-const APP_VERSION = '2026-04-30-v16';
+const APP_VERSION = '2026-04-30-v17';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
@@ -3632,6 +3632,11 @@ const ConfigView = ({ data, setData, toast }) => {
     saveTimerPrefs(next);
   };
 
+  // Log de diagnóstico de notificações (mostra cada passo do teste pra debug)
+  const [diagLog, setDiagLog] = useState([]);
+  const addDiag = (msg, ok) => setDiagLog(prev => [...prev, { msg, ok, t: new Date().toLocaleTimeString('pt-BR') }]);
+  const clearDiag = () => setDiagLog([]);
+
   const handleSetClientId = (cid) => {
     const newCfg = { ...config, clientId: cid };
     setConfig(newCfg);
@@ -3868,34 +3873,110 @@ const ConfigView = ({ data, setData, toast }) => {
                   }}>Pedir permissão</Btn>
                 )}
                 <Btn variant="ghost" full onClick={async () => {
-                  if (typeof Notification === 'undefined') { toast('Navegador não suporta notificações.', 'error'); return; }
+                  clearDiag();
+                  addDiag('Iniciando diagnóstico...', true);
+
+                  // 1. Suporte básico
+                  if (typeof Notification === 'undefined') {
+                    addDiag('Notification API não suportada neste navegador', false);
+                    return;
+                  }
+                  addDiag('Notification API: suportada', true);
+
+                  // 2. Permissão
+                  addDiag('Permissão atual: ' + Notification.permission, Notification.permission === 'granted');
                   if (Notification.permission !== 'granted') {
                     const r = await requestNotificationPermission();
-                    if (r !== 'granted') { toast('Permissão necessária.', 'error'); return; }
+                    addDiag('Após solicitação: ' + r, r === 'granted');
+                    if (r !== 'granted') return;
                   }
-                  // Diagnóstico: tenta SW primeiro, registra qual caminho funcionou
-                  try {
-                    const reg = window.__swReg || (navigator.serviceWorker && await navigator.serviceWorker.getRegistration());
-                    if (reg && reg.showNotification) {
-                      await reg.showNotification('Teste de notificação', {
-                        body: 'Esta notificação veio do Service Worker (modo PWA).',
-                        tag: 'test-notification',
-                      });
-                      toast('Notificação enviada via Service Worker.');
-                      return;
+
+                  // 3. Service Worker
+                  let reg = window.__swReg;
+                  if (!reg && navigator.serviceWorker) {
+                    try {
+                      reg = await navigator.serviceWorker.getRegistration();
+                    } catch(e) {
+                      addDiag('Erro ao buscar SW: ' + e.message, false);
                     }
-                  } catch(e) { console.warn('SW path failed:', e); }
-                  // Fallback
-                  try {
-                    new Notification('Teste de notificação', {
-                      body: 'Esta notificação veio da Notification API direta.',
-                      tag: 'test-notification',
-                    });
-                    toast('Notificação enviada (modo direto).');
-                  } catch(e) {
-                    toast('Falha ao enviar notificação: ' + (e.message || 'erro'), 'error');
                   }
-                }}>Testar notificação</Btn>
+                  if (reg) {
+                    addDiag('Service Worker: registrado (' + (reg.active ? 'ativo' : 'inativo') + ')', !!reg.active);
+                  } else {
+                    addDiag('Service Worker: NÃO registrado', false);
+                  }
+
+                  // 4. Display mode (PWA vs aba)
+                  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+                  addDiag('Modo: ' + (isStandalone ? 'PWA standalone' : 'aba do navegador'), true);
+
+                  // 5. Tenta caminho SW
+                  let swOk = false;
+                  if (reg && reg.showNotification) {
+                    try {
+                      await reg.showNotification('TESTE SW - ' + new Date().toLocaleTimeString('pt-BR'), {
+                        body: 'Notificação via Service Worker',
+                        tag: 'test-sw',
+                        requireInteraction: true,
+                      });
+                      addDiag('showNotification(SW): chamada sem erro', true);
+                      swOk = true;
+                    } catch(e) {
+                      addDiag('showNotification(SW) FALHOU: ' + e.message, false);
+                    }
+                  }
+
+                  // 6. Tenta caminho direto também
+                  try {
+                    const n = new Notification('TESTE Direto - ' + new Date().toLocaleTimeString('pt-BR'), {
+                      body: 'Notificação via API direta',
+                      tag: 'test-direct',
+                      requireInteraction: true,
+                    });
+                    addDiag('new Notification(): chamada sem erro', true);
+                  } catch(e) {
+                    addDiag('new Notification() FALHOU: ' + e.message, false);
+                  }
+
+                  // 7. Vibração e som como prova de vida (não-notificação)
+                  vibrate(200);
+                  addDiag('Vibração disparada (deveria sentir)', true);
+                  try { playBeep(); addDiag('Beep disparado (deveria ouvir)', true); }
+                  catch(e) { addDiag('Beep FALHOU: ' + e.message, false); }
+
+                  addDiag('--- FIM ---', true);
+                  addDiag('Se as duas chamadas de notificação acima foram OK mas você não viu nenhuma na tela, é o sistema operacional bloqueando (comum em Xiaomi/MIUI/HyperOS). Veja instruções abaixo do log.', true);
+                }}>Diagnóstico de notificação</Btn>
+
+                {/* Log de diagnóstico */}
+                {diagLog.length > 0 && (
+                  <div className="border border-[#1a1a1a] bg-[#0a0a0a] p-3 space-y-1 max-h-72 overflow-y-auto">
+                    {diagLog.map((entry, i) => (
+                      <div key={i} className="font-mono text-[10px] flex gap-2 leading-relaxed">
+                        <span className="text-[#666] flex-shrink-0">{entry.t}</span>
+                        <span className="flex-shrink-0" style={{ color: entry.ok ? '#84cc16' : '#ff4757' }}>
+                          {entry.ok ? '✓' : '✗'}
+                        </span>
+                        <span className="text-white break-words">{entry.msg}</span>
+                      </div>
+                    ))}
+                    <button onClick={clearDiag} className="mt-2 text-[10px] font-mono text-[#666] hover:text-white">Limpar log</button>
+                  </div>
+                )}
+
+                {/* Instruções específicas pra Xiaomi/MIUI */}
+                <div className="border border-[#1a1a1a] bg-[#0a0a0a] p-3 space-y-1.5">
+                  <div className="text-[10px] font-mono uppercase tracking-widest text-[#888] mb-1">Telefone Xiaomi/Redmi/Poco?</div>
+                  <p className="text-[10px] font-mono text-[#aaa] leading-relaxed">
+                    O MIUI/HyperOS bloqueia notificações de PWA mesmo com permissão concedida. Precisa configurar tudo isso:
+                  </p>
+                  <ol className="text-[10px] font-mono text-[#aaa] leading-relaxed list-decimal list-inside space-y-0.5">
+                    <li>Configurações → Apps → Chrome (ou o PWA instalado) → <span className="text-white">Notificações</span> → ativar tudo, especialmente "Banners flutuantes" e "Tela de bloqueio"</li>
+                    <li>Configurações → Apps → Chrome → <span className="text-white">Bateria</span> → "Sem restrições"</li>
+                    <li>Configurações → Apps → Chrome → <span className="text-white">Iniciar automaticamente</span> → ativar</li>
+                    <li>Em "Apps recentes": segura o card do Chrome e ativa <span className="text-white">cadeado</span> (impede o sistema de fechar)</li>
+                  </ol>
+                </div>
                 {isDenied && (
                   <p className="text-[10px] font-mono text-[#ff4757] leading-relaxed px-1">
                     Para reativar: nas configurações do Android → Apps → Chrome (ou o PWA do Treino) → Notificações → permitir. Depois volte aqui.
