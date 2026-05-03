@@ -324,48 +324,52 @@ input[type=number] { -moz-appearance: textfield; }
 <!-- Google Identity Services para OAuth -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
-// Service worker registrado via Blob.
-// - Sem cache (não faz offline real, evita problemas de versionamento)
-// - Aceita mensagens via postMessage pra mostrar notificações via showNotification
-//   (necessário em PWAs Android Chrome, que frequentemente bloqueiam new Notification() direto)
-// - Mantém referência global window.__swReg pra que o app possa usar swReg.showNotification(...)
+// Service Worker registrado a partir de um arquivo HTTP real (sw.js).
+// IMPORTANTE: o Chrome no Android REJEITA registros via Blob URL.
+// Precisa ser um arquivo servido pelo mesmo origem (GitHub Pages serve isso).
+// Se o arquivo sw.js não existir (ex: rodando local sem servidor), tenta Blob como fallback.
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  var swCode = [
-    "self.addEventListener('install', e => self.skipWaiting());",
-    "self.addEventListener('activate', e => self.clients.claim());",
-    "self.addEventListener('fetch', e => {});",
-    // Quando o usuário toca na notificação, foca a janela do app
-    "self.addEventListener('notificationclick', e => {",
-    "  e.notification.close();",
-    "  e.waitUntil(",
-    "    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {",
-    "      for (const c of list) { if ('focus' in c) { c.postMessage({ type: 'notification-click', tag: e.notification.tag }); return c.focus(); } }",
-    "      if (self.clients.openWindow) return self.clients.openWindow('/');",
-    "    })",
-    "  );",
-    "});",
-    // Permite que a página peça uma notificação via postMessage (algumas plataformas exigem)
-    "self.addEventListener('message', e => {",
-    "  if (e.data && e.data.type === 'show-notification') {",
-    "    self.registration.showNotification(e.data.title || 'Treino', e.data.options || {});",
-    "  }",
-    "});"
-  ].join('\n');
-  var swBlob = new Blob([swCode], { type: 'application/javascript' });
-  var swUrl = URL.createObjectURL(swBlob);
-  navigator.serviceWorker.register(swUrl)
+  // Tenta o arquivo real primeiro (caminho que funciona em mobile)
+  navigator.serviceWorker.register('./sw.js')
     .then(function(reg) {
       window.__swReg = reg;
-      // Escuta cliques na notificação propagados pelo SW
+      console.log('SW registered (file):', reg);
       navigator.serviceWorker.addEventListener('message', function(e) {
         if (e.data && e.data.type === 'notification-click') {
           window.__pendingStartSetFromNotification = true;
-          // Dispara um evento focus pra que o app reaja imediatamente
           try { window.dispatchEvent(new Event('focus')); } catch(err){}
         }
       });
     })
-    .catch(function(err) { console.warn('SW registration failed:', err); });
+    .catch(function(err) {
+      console.warn('SW file registration failed, trying blob fallback:', err);
+      // Fallback: registra via Blob (funciona em desktop/local; mobile costuma falhar)
+      var swCode = [
+        "self.addEventListener('install', e => self.skipWaiting());",
+        "self.addEventListener('activate', e => self.clients.claim());",
+        "self.addEventListener('fetch', e => {});",
+        "self.addEventListener('notificationclick', e => {",
+        "  e.notification.close();",
+        "  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {",
+        "    for (const c of list) { if ('focus' in c) { c.postMessage({ type: 'notification-click', tag: e.notification.tag }); return c.focus(); } }",
+        "    if (self.clients.openWindow) return self.clients.openWindow('/');",
+        "  }));",
+        "});",
+        "self.addEventListener('message', e => {",
+        "  if (e.data && e.data.type === 'show-notification') {",
+        "    self.registration.showNotification(e.data.title || 'Treino', e.data.options || {});",
+        "  }",
+        "});"
+      ].join('\n');
+      var swBlob = new Blob([swCode], { type: 'application/javascript' });
+      var swUrl = URL.createObjectURL(swBlob);
+      navigator.serviceWorker.register(swUrl)
+        .then(function(reg) {
+          window.__swReg = reg;
+          console.log('SW registered (blob fallback):', reg);
+        })
+        .catch(function(e2) { console.warn('SW blob fallback also failed:', e2); });
+    });
 }
 </script>
 </head>
@@ -424,7 +428,7 @@ const DRIVE_FILE_NAME = 'treino-backup.json';
 const SYNC_TIMES_KEY = 'gymapp-sync-times-v1';
 const TIMER_PREFS_KEY = 'gymapp-timer-prefs-v1';
 const TIMER_STATE_KEY = 'gymapp-timer-state-v1';
-const APP_VERSION = '2026-04-30-v17';
+const APP_VERSION = '2026-04-30-v18';
 
 const EX_TYPES = [
   { id: 'weight', label: 'Carga + reps',     icon: Dumbbell, hint: 'Para exercícios com pesos. Use carga 0 para exercícios de peso corporal puro.' },
